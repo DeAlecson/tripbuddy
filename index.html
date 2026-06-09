@@ -221,17 +221,27 @@ input {
   height: 52px;
   border-radius: 50%;
   background: var(--accent);
-  color: var(--bg);
+  color: #0B1120;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 6px 20px rgba(0,212,255,0.4);
   z-index: 40;
   transition: transform 0.15s, background 0.2s;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
 }
-.fab:active { transform: scale(0.92); }
-.fab svg { display: block; }
+.fab:active { transform: scale(0.92) translateZ(0); }
+.fab svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+}
 .fab.gps-on { background: #4A9EFF; box-shadow: 0 6px 20px rgba(74,158,255,0.5); }
+.fab.gps-on svg { stroke: #FFFFFF; }
+.fab.gps-on svg circle[fill] { fill: #FFFFFF; }
 
 /* Map markers */
 .custom-marker { background: none !important; border: none !important; }
@@ -833,9 +843,9 @@ input {
         <button class="pill active" data-layer="water"><span class="pill-dot"></span>Water</button>
       </div>
       <button class="fab" id="nearest-fab" aria-label="Find my location" title="Find my location">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/>
-          <circle cx="12" cy="12" r="7.5"/>
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#0B1120" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="3" fill="#0B1120" stroke="none"/>
+          <circle cx="12" cy="12" r="8"/>
           <line x1="12" y1="1.5" x2="12" y2="4.5"/>
           <line x1="12" y1="19.5" x2="12" y2="22.5"/>
           <line x1="1.5" y1="12" x2="4.5" y2="12"/>
