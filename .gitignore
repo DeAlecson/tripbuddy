@@ -1,0 +1,21 @@
+# Planning data — excluded for privacy
+*.xlsx
+*.xls
+*.numbers
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Vercel
+.vercel/
+
+# Node (not used, but just in case)
+node_modules/

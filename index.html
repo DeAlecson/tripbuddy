@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0B1120">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TripBuddy">
+<title>TripBuddy · Boracay Jun 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+:root {
+  --bg: #0B1120;
+  --surface: #131D2E;
+  --surface-2: #1A2640;
+  --surface-3: #22324F;
+  --border: #1E3050;
+  --text: #E8EDF5;
+  --muted: #6B7A99;
+  --accent: #00D4FF;
+  --accent-dim: #003D4D;
+  --coral: #FF6B6B;
+  --gold: #F5A623;
+  --green: #3DDC97;
+  --red: #FF6B6B;
+  --white: #FFFFFF;
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-full: 999px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --tab-h: 64px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+button {
+  font: inherit; color: inherit; background: none; border: 0; cursor: pointer;
+}
+input {
+  font: inherit; color: inherit;
+}
+
+/* ===================== Layout ===================== */
+#app {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+.tab-area {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  bottom: calc(var(--tab-h) + var(--safe-b));
+  overflow: hidden;
+}
+.tab-pane {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+}
+.tab-pane.active { display: flex; }
+.tab-pane.scrollable {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ===================== Tab Bar ===================== */
+.tab-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: calc(var(--tab-h) + var(--safe-b));
+  padding-bottom: var(--safe-b);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  z-index: 200;
+}
+.tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 10px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  position: relative;
+  padding: 6px 2px;
+  transition: color 0.15s;
+}
+.tab-btn .tab-ico { font-size: 22px; line-height: 1; }
+.tab-btn.active { color: var(--accent); }
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 0 0 3px 3px;
+}
+
+/* ===================== Map Tab ===================== */
+#tab-map { background: var(--bg); }
+.map-header {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: calc(var(--safe-t) + 10px) 14px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 50;
+  background: linear-gradient(180deg, rgba(11,17,32,0.92), rgba(11,17,32,0.55) 70%, transparent);
+  pointer-events: none;
+}
+.map-header > * { pointer-events: auto; }
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--white);
+}
+.wordmark .dot { color: var(--accent); }
+.locate-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: var(--shadow);
+}
+.locate-btn:active { transform: scale(0.96); }
+#map {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-2);
+}
+.leaflet-container {
+  background: #0E1830;
+  font-family: var(--font-body);
+}
+.leaflet-control-attribution {
+  background: rgba(11,17,32,0.7) !important;
+  color: var(--muted) !important;
+  font-size: 10px !important;
+}
+.leaflet-control-attribution a { color: var(--accent) !important; }
+.leaflet-control-zoom { display: none; }
+
+.layer-pills {
+  position: absolute;
+  bottom: 18px;
+  left: 12px;
+  z-index: 40;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: calc(100% - 80px);
+}
+.pill {
+  background: rgba(19,29,46,0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 7px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+}
+.pill.active { color: var(--text); border-color: var(--accent); background: rgba(0,212,255,0.12); }
+.pill .pill-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.pill.active[data-layer="food"] .pill-dot { background: var(--coral); }
+.pill.active[data-layer="poi"] .pill-dot { background: var(--accent); }
+.pill.active[data-layer="water"] .pill-dot { background: var(--gold); }
+
+.fab {
+  position: absolute;
+  bottom: 18px;
+  right: 16px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 20px rgba(0,212,255,0.4);
+  z-index: 40;
+  transition: transform 0.15s;
+}
+.fab:active { transform: scale(0.92); }
+
+/* Map markers */
+.custom-marker { background: none !important; border: none !important; }
+.marker-pin {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--white);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+}
+.marker-pin.food { background: var(--coral); }
+.marker-pin.poi { background: var(--accent); color: var(--bg); }
+.marker-pin.water { background: var(--gold); color: var(--bg); }
+.marker-pin.your-pick {
+  width: 32px; height: 32px;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(245,166,35,0.3), 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.user-marker { background: none !important; border: none !important; }
+.user-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #4A9EFF;
+  border: 3px solid var(--white);
+  box-shadow: 0 0 0 0 rgba(74,158,255,0.6);
+  animation: pulse 2s infinite;
+  position: relative;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(74,158,255,0.6); }
+  70% { box-shadow: 0 0 0 18px rgba(74,158,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(74,158,255,0); }
+}
+
+/* ===================== List tabs (header + content) ===================== */
+.list-header {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+  padding: calc(var(--safe-t) + 14px) 14px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.list-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.list-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+.sort-toggle {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 7px 10px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.search-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  color: var(--text);
+  font-size: 14px;
+  margin-bottom: 10px;
+  outline: none;
+}
+.search-input::placeholder { color: var(--muted); }
+.search-input:focus { border-color: var(--accent); }
+.chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 10px;
+  scrollbar-width: none;
+}
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 7px 13px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.12s;
+}
+.chip.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+.list-body {
+  padding: 12px 12px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.section-label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  padding: 6px 4px 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 0.12s, border-color 0.12s;
+}
+.card:active { transform: scale(0.985); border-color: var(--accent); }
+.card.your-pick { border-color: rgba(245,166,35,0.45); background: linear-gradient(180deg, rgba(245,166,35,0.06), var(--surface) 60%); }
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.card-title-wrap { flex: 1; min-width: 0; }
+.card-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.005em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.card-sub {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 3px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card-tag {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.badge.budget-low { background: rgba(61,220,151,0.14); color: var(--green); border-color: rgba(61,220,151,0.3); }
+.badge.budget-mid { background: rgba(245,166,35,0.14); color: var(--gold); border-color: rgba(245,166,35,0.3); }
+.badge.budget-high { background: rgba(255,107,107,0.14); color: var(--coral); border-color: rgba(255,107,107,0.3); }
+.badge.chill { background: rgba(0,212,255,0.12); color: var(--accent); border-color: rgba(0,212,255,0.3); }
+.badge.pick { background: rgba(245,166,35,0.18); color: var(--gold); border-color: rgba(245,166,35,0.4); }
+.badge.free { background: rgba(61,220,151,0.14); color: var(--green); border-color: rgba(61,220,151,0.3); }
+.badge.fee { background: rgba(245,166,35,0.14); color: var(--gold); border-color: rgba(245,166,35,0.3); }
+
+.card-price {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.card-price .sec {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
+  margin-left: 4px;
+}
+.card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.dist {
+  color: var(--accent);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Note banner */
+.note-banner {
+  background: rgba(0,212,255,0.08);
+  border: 1px solid rgba(0,212,255,0.25);
+  border-radius: var(--radius-md);
+  padding: 11px 12px;
+  font-size: 12px;
+  color: var(--text);
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+.note-banner .close {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+/* ===================== Settings ===================== */
+.settings-body {
+  padding: 12px 14px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.setting-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+.setting-label {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.radio-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.radio-row:last-child { border-bottom: none; }
+.radio-row .lbl { font-size: 14px; font-weight: 500; }
+.radio-row .sub { color: var(--muted); font-size: 11px; margin-top: 1px; }
+.radio-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  position: relative;
+  flex-shrink: 0;
+}
+.radio-row.active .radio-dot { border-color: var(--accent); }
+.radio-row.active .radio-dot::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 4px;
+}
+.toggle {
+  width: 42px; height: 24px;
+  background: var(--surface-3);
+  border-radius: var(--radius-full);
+  position: relative;
+  transition: background 0.18s;
+  flex-shrink: 0;
+}
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 20px; height: 20px;
+  background: var(--white);
+  border-radius: 50%;
+  transition: transform 0.18s;
+}
+.toggle.on { background: var(--accent); }
+.toggle.on::after { transform: translateX(18px); }
+
+.btn-primary {
+  width: 100%;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+}
+.btn-primary:active { opacity: 0.85; }
+.btn-secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.app-info {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 8px 4px;
+}
+.app-info .brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text);
+  font-size: 14px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* ===================== Bottom Sheet ===================== */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 300;
+}
+.sheet-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.bottom-sheet {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--surface-2);
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
+  max-height: 88vh;
+  transform: translateY(100%);
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 310;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -12px 40px rgba(0,0,0,0.5);
+  padding-bottom: var(--safe-b);
+  will-change: transform;
+}
+.bottom-sheet.open { transform: translateY(0); }
+.bottom-sheet.dragging { transition: none; }
+.sheet-handle-row {
+  padding: 10px 0 4px;
+  display: flex;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+}
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--muted);
+  border-radius: 2px;
+  opacity: 0.5;
+}
+.sheet-content {
+  padding: 4px 18px 22px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.sheet-cat {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sheet-cat .pick-flag { color: var(--gold); font-size: 14px; }
+.sheet-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  margin-bottom: 14px;
+}
+.sheet-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.meta-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+.meta-row .ico {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  color: var(--muted);
+}
+.sheet-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+  margin-bottom: 16px;
+}
+.sheet-price-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 14px;
+}
+.sheet-price-main {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+.sheet-price-secs {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.sheet-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.sheet-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.sheet-actions button {
+  flex: 1;
+  padding: 13px 10px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.sheet-actions .nav-btn {
+  background: var(--accent);
+  color: var(--bg);
+}
+.sheet-actions .nav-btn:active { opacity: 0.85; }
+.sheet-actions .copy-btn {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.sheet-dist-line {
+  text-align: center;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.zone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.zone-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.zone-item-name { font-weight: 600; font-size: 13px; }
+.zone-item-meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+/* ===================== Toast ===================== */
+.toast {
+  position: fixed;
+  bottom: calc(var(--tab-h) + var(--safe-b) + 14px);
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 400;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow: var(--shadow);
+  max-width: 90vw;
+  text-align: center;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ===================== Misc ===================== */
+.empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+.spacer { height: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .user-dot { animation: none; }
+}
+
+@media (max-width: 360px) {
+  .list-title { font-size: 20px; }
+  .card { padding: 11px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="tab-area">
+
+    <!-- ============ MAP TAB ============ -->
+    <section id="tab-map" class="tab-pane active" aria-label="Map">
+      <div class="map-header">
+        <div class="wordmark">Trip<span class="dot">Buddy</span></div>
+        <button class="locate-btn" id="locate-me" aria-label="Locate me">
+          <span>📍</span><span>Locate Me</span>
+        </button>
+      </div>
+      <div id="map"></div>
+      <div class="layer-pills">
+        <button class="pill active" data-layer="food"><span class="pill-dot"></span>Food</button>
+        <button class="pill active" data-layer="poi"><span class="pill-dot"></span>POI</button>
+        <button class="pill active" data-layer="water"><span class="pill-dot"></span>Water</button>
+      </div>
+      <button class="fab" id="nearest-fab" aria-label="Show nearest spots">🎯</button>
+    </section>
+
+    <!-- ============ FOOD TAB ============ -->
+    <section id="tab-food" class="tab-pane scrollable" aria-label="Food">
+      <header class="list-header">
+        <div class="list-title-row">
+          <h1 class="list-title">🍽 Food</h1>
+          <button class="sort-toggle" id="food-sort">Station ▾</button>
+        </div>
+        <input type="text" class="search-input" id="food-search" placeholder="Search by name or specialty…">
+        <div class="chips" id="food-chips"></div>
+      </header>
+      <div class="list-body" id="food-list"></div>
+    </section>
+
+    <!-- ============ POI TAB ============ -->
+    <section id="tab-poi" class="tab-pane scrollable" aria-label="Points of Interest">
+      <header class="list-header">
+        <div class="list-title-row">
+          <h1 class="list-title">📍 Points of Interest</h1>
+        </div>
+        <div class="chips" id="poi-chips"></div>
+      </header>
+      <div class="list-body" id="poi-list"></div>
+    </section>
+
+    <!-- ============ WATERSPORTS TAB ============ -->
+    <section id="tab-water" class="tab-pane scrollable" aria-label="Watersports">
+      <header class="list-header">
+        <div class="list-title-row">
+          <h1 class="list-title">🌊 Watersports</h1>
+        </div>
+        <div class="chips" id="water-chips"></div>
+      </header>
+      <div class="list-body" id="water-list">
+        <div class="note-banner" id="water-note">
+          <span>💡</span>
+          <span>Prices are local beach walk-up rates (Nov 2025). Negotiate on the beach — online rates may be 20–40% higher.</span>
+          <button class="close" id="water-note-close" aria-label="Dismiss">×</button>
+        </div>
+        <div id="water-items"></div>
+      </div>
+    </section>
+
+    <!-- ============ SETTINGS TAB ============ -->
+    <section id="tab-settings" class="tab-pane scrollable" aria-label="Settings">
+      <header class="list-header">
+        <div class="list-title-row">
+          <h1 class="list-title">⚙️ Settings</h1>
+        </div>
+      </header>
+      <div class="settings-body">
+
+        <div class="setting-section">
+          <div class="setting-label">Primary Currency</div>
+          <div id="currency-rows"></div>
+        </div>
+
+        <div class="setting-section">
+          <div class="setting-label">Map</div>
+          <div class="toggle-row" id="distance-toggle-row">
+            <div>
+              <div class="lbl">Show distance on cards</div>
+              <div class="sub">Requires location access</div>
+            </div>
+            <div class="toggle" id="distance-toggle"></div>
+          </div>
+          <div style="height:10px"></div>
+          <button class="btn-primary" id="settings-locate">Request Location Access</button>
+        </div>
+
+        <div class="setting-section">
+          <div class="app-info">
+            <span class="brand">TripBuddy · Boracay Jun 2026</span>
+            22–26 June · 28 Adults + Baby Bella<br>
+            Henann Crystal Sands & La Carmela<br>
+            Built with ♥ by Alecson
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ============ TAB BAR ============ -->
+  <nav class="tab-bar" role="tablist">
+    <button class="tab-btn active" data-tab="map" role="tab"><span class="tab-ico">🗺</span><span>Map</span></button>
+    <button class="tab-btn" data-tab="food" role="tab"><span class="tab-ico">🍽</span><span>Food</span></button>
+    <button class="tab-btn" data-tab="poi" role="tab"><span class="tab-ico">📍</span><span>POI</span></button>
+    <button class="tab-btn" data-tab="water" role="tab"><span class="tab-ico">🌊</span><span>Water</span></button>
+    <button class="tab-btn" data-tab="settings" role="tab"><span class="tab-ico">⚙️</span><span>Settings</span></button>
+  </nav>
+</div>
+
+<!-- ============ BOTTOM SHEET ============ -->
+<div class="sheet-backdrop" id="sheet-backdrop"></div>
+<div class="bottom-sheet" id="bottom-sheet" role="dialog" aria-modal="true">
+  <div class="sheet-handle-row" id="sheet-handle-row">
+    <div class="sheet-handle"></div>
+  </div>
+  <div class="sheet-content" id="sheet-content"></div>
+</div>
+
+<!-- ============ TOAST ============ -->
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+// ============================================================
+// TRIPBUDDY DATA
+// ============================================================
+window.TRIPBUDDY_DATA = {
+  "food": [
+    {"id":"f1","name":"Aria Restobar","station":"Station 1","meal_type":"Breakfast","specialty":"Silog meals, tapsilog, garlic rice, eggs any style, coffee","budget":"Mid","php":220,"usd":3.58,"sgd":4.6,"chill_ok":true,"vibe":"Casual beachfront cafe, great coffee, chill morning vibe","address":"White Beach Path, Station 1, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Aria%20Restobar%20Boracay%20Philippines","lat":11.9721,"lng":121.9187},
+    {"id":"f2","name":"Smoke Grill BBQ","station":"Station 1","meal_type":"Breakfast","specialty":"Champorado, tapa, pandesal, silog breakfast combos","budget":"Low","php":150,"usd":2.44,"sgd":3.14,"chill_ok":true,"vibe":"Beloved local crowd spot, hearty and cheap, no-frills Filipino breakfast","address":"White Beach Path, Station 1, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Smoke%20Grill%20BBQ%20Boracay%20Philippines","lat":11.9715,"lng":121.9186},
+    {"id":"f3","name":"Merly's BBQ (Chori Burger)","station":"Station 1","meal_type":"Snack/Dessert","specialty":"Chori burger PHP50, spicy chorizo in a bun, grilled isaw","budget":"Low","php":80,"usd":1.3,"sgd":1.67,"chill_ok":true,"vibe":"Iconic Boracay street food since 1980s. Opens 5PM. Long lines are normal.","address":"Near Astoria Hotel, Station 1 Beachfront, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Merly%27s%20BBQ%20%28Chori%20Burger%29%20Boracay%20Philippines","lat":11.9735,"lng":121.9185},
+    {"id":"f4","name":"Coco Mama","station":"Station 1","meal_type":"Snack/Dessert","specialty":"Fresh coconut ice cream, original, pandan or mixed, w/ mango topping","budget":"Low","php":150,"usd":2.44,"sgd":3.14,"chill_ok":true,"vibe":"Boracay-exclusive coconut ice cream. Vegan, dairy-free. Multiple branches.","address":"Station 1 Beachfront, Balabag, Boracay 5608 Aklan","maps_url":"https://www.google.com/maps/search/?api=1&query=Coco%20Mama%20Boracay%20Philippines","lat":11.973,"lng":121.9184},
+    {"id":"f5","name":"Real Coffee & Tea Cafe","station":"Station 1","meal_type":"Lunch","specialty":"The original calamansi muffin, continental breakfast, coffee, mango French toast","budget":"Mid","php":380,"usd":6.18,"sgd":7.95,"chill_ok":true,"vibe":"Boracay institution since 1996. Reserve muffins in advance!","address":"2nd Floor, Sea World Bldg, Front Beach Station 2, Balabag, Malay, Aklan","maps_url":"https://www.google.com/maps/search/?api=1&query=Real%20Coffee%20%26%20Tea%20Cafe%20Boracay%20Philippines","lat":11.9648,"lng":121.9256},
+    {"id":"f6","name":"Nigi Nigi Nu Noos","station":"Station 1","meal_type":"Lunch","specialty":"Grilled seafood platter, kare-kare, Filipino-Western fusion mains","budget":"Mid","php":500,"usd":8.13,"sgd":10.45,"chill_ok":true,"vibe":"Shaded garden restaurant, big tables good for groups, relaxed vibe","address":"White Beach Path, Station 1, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Nigi%20Nigi%20Nu%20Noos%20Boracay%20Philippines","lat":11.971,"lng":121.9188},
+    {"id":"f7","name":"Back Beach Burgers","station":"Station 1","meal_type":"Lunch/Dinner","specialty":"Smash burger, cream cheese jalapeno burger, bacon mushroom melt","budget":"Mid","php":550,"usd":8.94,"sgd":11.5,"chill_ok":true,"vibe":"Best-rated burger on the island. Cash only. 2nd floor overlooks Willy's Rock.","address":"2nd Floor, Station 1 Beachfront (near Willy's Rock), Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Back%20Beach%20Burgers%20Boracay%20Philippines","lat":11.9719,"lng":121.9183},
+    {"id":"f8","name":"Muni Muni","station":"Station 1","meal_type":"Lunch/Dinner","specialty":"Beef tacos, fajitas, burritos, margaritas, Filipino-Mexican fusion","budget":"Mid","php":450,"usd":7.32,"sgd":9.41,"chill_ok":true,"vibe":"Beachfront, 3-floor. Happy hour 3-6PM. Unli cocktails 9-10PM. Beside Starbucks.","address":"Station 1 Balabag Boracay Island, beside Starbucks, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Muni%20Muni%20Boracay%20Philippines","lat":11.9722,"lng":121.9181},
+    {"id":"f9","name":"Dos Mestizos","station":"Station 1","meal_type":"Dinner","specialty":"Spanish tapas, paella, sangria, chorizo al vino","budget":"High","php":800,"usd":13.01,"sgd":16.73,"chill_ok":true,"vibe":"Romantic beachfront terrace, best paella on the island.","address":"White Beach Path, Station 1, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Dos%20Mestizos%20Boracay%20Philippines","lat":11.97,"lng":121.9188},
+    {"id":"f10","name":"Terrazza Ristorante","station":"Station 1","meal_type":"Dinner","specialty":"Wood-fired pizza, pasta, Italian wine","budget":"Mid","php":700,"usd":11.38,"sgd":14.64,"chill_ok":true,"vibe":"Relaxed Italian, great sunset view, good for mixed groups","address":"White Beach Path, Station 1, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Terrazza%20Ristorante%20Boracay%20Philippines","lat":11.9705,"lng":121.9187},
+    {"id":"f11","name":"Epic Bar","station":"Station 1","meal_type":"Drinks/Nightlife","specialty":"Cocktails, beer buckets, live DJ, fire dancers on the beach","budget":"Mid","php":300,"usd":4.88,"sgd":6.27,"chill_ok":false,"vibe":"Beachfront bar, S1's most popular nightlife anchor. Packed after 10PM.","address":"White Beach Path, Station 1, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Epic%20Bar%20Boracay%20Philippines","lat":11.9718,"lng":121.9182},
+    {"id":"f12","name":"Bom Bom Beach Club","station":"Station 1","meal_type":"Drinks/Nightlife","specialty":"Mojitos, frozen mango daiquiri, hammocks, bean bags","budget":"Mid","php":350,"usd":5.69,"sgd":7.32,"chill_ok":false,"vibe":"Chill beach club, great afternoon drinks. Good for chill group too.","address":"White Beach Path, Station 1, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Bom%20Bom%20Beach%20Club%20Boracay%20Philippines","lat":11.9712,"lng":121.9183},
+    {"id":"f13","name":"The Sunny Side Cafe","station":"Station 2","meal_type":"Breakfast","specialty":"Eggs Benedict, giant pancakes, chorizo pork burger, French toast, smoothie bowls","budget":"Mid","php":400,"usd":6.5,"sgd":8.36,"chill_ok":true,"vibe":"Instagrammable, popular brunch spot. Multiple locations. Air-conditioned.","address":"White Beach Path, Station 2, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=The%20Sunny%20Side%20Cafe%20Boracay%20Philippines","lat":11.966,"lng":121.9248},
+    {"id":"f14","name":"Jonah's Fruit Shake","station":"Station 2","meal_type":"Breakfast","specialty":"Fresh tropical fruit shakes, mango, watermelon, banana, acai bowls","budget":"Low","php":120,"usd":1.95,"sgd":2.51,"chill_ok":true,"vibe":"Legendary local shake institution. Very cheap, very refreshing.","address":"White Beach Path, Station 2, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Jonah%27s%20Fruit%20Shake%20Boracay%20Philippines","lat":11.9655,"lng":121.9252},
+    {"id":"f15","name":"Jasper's Tapsilog & Restaurant","station":"Station 2","meal_type":"Breakfast","specialty":"Silog meals, turo-turo Filipino dishes, liempo, sinigang, bilao orders","budget":"Low","php":130,"usd":2.11,"sgd":2.72,"chill_ok":true,"vibe":"Most iconic budget pinoy resto since 1995. Beside Graft's Supermarket at D'Mall.","address":"D'Mall, Balabag, Boracay Island, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Jasper%27s%20Tapsilog%20%26%20Restaurant%20Boracay%20Philippines","lat":11.9645,"lng":121.9262},
+    {"id":"f16","name":"Coco Mama (D'Mall branch)","station":"Station 2","meal_type":"Snack/Dessert","specialty":"Coconut ice cream, busiest branch, most queued. Same menu as S1.","budget":"Low","php":150,"usd":2.44,"sgd":3.14,"chill_ok":true,"vibe":"Right in D'Mall. Go at night to skip the sun queue.","address":"D'Mall Avenue, Balabag, Boracay Island, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Coco%20Mama%20%28D%27Mall%20branch%29%20Boracay%20Philippines","lat":11.9648,"lng":121.9265},
+    {"id":"f17","name":"D'Talipapa Market","station":"Station 2","meal_type":"Lunch","specialty":"Fresh-catch seafood, prawns, crabs, squid, lapu-lapu, buy by weight","budget":"Mid","php":600,"usd":9.76,"sgd":12.55,"chill_ok":true,"vibe":"Best value seafood. Buy raw at wet market, take to nearby grill stalls.","address":"D'Talipapa, Station 2, Balabag, Boracay Island, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=D%27Talipapa%20Market%20Boracay%20Philippines","lat":11.9652,"lng":121.9268},
+    {"id":"f18","name":"Meze Wrap","station":"Station 2","meal_type":"Lunch","specialty":"Shawarma wraps, kebabs, hummus platters, falafel, pita","budget":"Mid","php":380,"usd":6.18,"sgd":7.95,"chill_ok":false,"vibe":"Mediterranean, affordable. Yellow building 3rd floor. Open 11AM-9:30PM.","address":"Main Rd (near BPI D'Mall, Yellow Building across Lake Town), Balabag, Boracay, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Meze%20Wrap%20Boracay%20Philippines","lat":11.9643,"lng":121.926},
+    {"id":"f19","name":"Andok's / Mang Inasal","station":"Station 2","meal_type":"Lunch/Dinner","specialty":"Lechon manok, chicken inasal, palabok, garlic rice","budget":"Low","php":200,"usd":3.25,"sgd":4.18,"chill_ok":true,"vibe":"Fast casual Filipino chain, cheapest for big groups, fast service","address":"D'Mall Main Road, Station 2, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Andok%27s%20/%20Mang%20Inasal%20Boracay%20Philippines","lat":11.9646,"lng":121.9258},
+    {"id":"f20","name":"Island Chicken Inasal","station":"Station 2","meal_type":"Lunch/Dinner","specialty":"Authentic Ilonggo-style chicken inasal, kansi soup, lumpiang togue","budget":"Low","php":270,"usd":4.39,"sgd":5.65,"chill_ok":true,"vibe":"The real-deal inasal, calamansi marinade. D'Mall branch most famous.","address":"D'Mall D'Boracay, Boracay Highway Central, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Island%20Chicken%20Inasal%20Boracay%20Philippines","lat":11.9644,"lng":121.9263},
+    {"id":"f21","name":"SpiceBird","station":"Station 2","meal_type":"Lunch/Dinner","specialty":"Piri-piri grilled chicken, pork belly board, shrimp, crab, chicken skin","budget":"High","php":650,"usd":10.57,"sgd":13.59,"chill_ok":false,"vibe":"Unit 108 D'Mall Plaza. AC inside, outdoor seating. 4 house sauces.","address":"Unit 108, D'Mall Plaza, Station 2, Balabag, Boracay Island, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=SpiceBird%20Boracay%20Philippines","lat":11.9647,"lng":121.9261},
+    {"id":"f22","name":"Cyma Greek Taverna","station":"Station 2","meal_type":"Dinner","specialty":"Flaming saganaki, lamb chops, hummus, pita, souvlaki","budget":"High","php":900,"usd":14.63,"sgd":18.82,"chill_ok":false,"vibe":"Best group dinner on the island. Lively atmosphere. Book ahead.","address":"D'Mall, Station 2, Balabag, Boracay Island, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Cyma%20Greek%20Taverna%20Boracay%20Philippines","lat":11.9649,"lng":121.9264},
+    {"id":"f23","name":"Mama's Fish House","station":"Station 1","meal_type":"Dinner","specialty":"Grilled fish platter, sinigang, squid, boodle fight option","budget":"Mid","php":650,"usd":10.57,"sgd":13.59,"chill_ok":true,"vibe":"Filipino family-style, great for big group portions.","address":"White Beach Path, Station 2, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Mama%27s%20Fish%20House%20Boracay%20Philippines","lat":11.9658,"lng":121.925},
+    {"id":"f24","name":"Juice Boracay","station":"Station 2","meal_type":"Drinks/Nightlife","specialty":"Craft beers, cocktails, DJ nights, beachfront bar","budget":"Mid","php":350,"usd":5.69,"sgd":7.32,"chill_ok":false,"vibe":"Hip, good music, young crowd, beachfront vibes.","address":"White Beach Path, Station 2, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Juice%20Boracay%20Boracay%20Philippines","lat":11.9654,"lng":121.9248},
+    {"id":"f25","name":"Summer Place Bar","station":"Station 2","meal_type":"Drinks/Nightlife","specialty":"Beer towers, live band, local crowd atmosphere","budget":"Low","php":250,"usd":4.07,"sgd":5.23,"chill_ok":false,"vibe":"Unpretentious, very fun. Good for those wanting less touristy nightlife.","address":"White Beach Path, Station 2, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Summer%20Place%20Bar%20Boracay%20Philippines","lat":11.9656,"lng":121.9249},
+    {"id":"f26","name":"Hue Hotels Cafe","station":"Station 3","meal_type":"Breakfast","specialty":"Buffet breakfast, waffles, eggs, Filipino spreads, pastries (open to public)","budget":"Mid","php":450,"usd":7.32,"sgd":9.41,"chill_ok":true,"vibe":"Hotel cafe open to non-guests. Buffet spread, air-conditioned.","address":"Hue Hotels Boracay, Station 3, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Hue%20Hotels%20Cafe%20Boracay%20Philippines","lat":11.958,"lng":121.9295},
+    {"id":"f27","name":"Nigi's Grill Morning","station":"Station 3","meal_type":"Breakfast","specialty":"Tocino, eggs, atchara, silog meals","budget":"Low","php":130,"usd":2.11,"sgd":2.72,"chill_ok":false,"vibe":"Neighbourhood budget resto, cheap and cheerful, local crowd","address":"Main Road, Station 3, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Nigi%27s%20Grill%20Morning%20Boracay%20Philippines","lat":11.9575,"lng":121.929},
+    {"id":"f28","name":"Calma Cafe","station":"Station 3","meal_type":"Snack/Dessert","specialty":"Iced coconut matcha, matcha mango drink, pesto pasta, chimichurri chicken","budget":"Mid","php":250,"usd":4.07,"sgd":5.23,"chill_ok":false,"vibe":"Hidden gem on Bulabog Beach. Tree-house vibe, remove shoes, net lounges.","address":"Above Greenyard Kite Center, Bulabog Beach, Station 3, Bo. Manggayad, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Calma%20Cafe%20Boracay%20Philippines","lat":11.97,"lng":121.9335},
+    {"id":"f29","name":"La Isla Bonita","station":"Station 3","meal_type":"Lunch","specialty":"Grilled seafood, sinigang, kare-kare, generous portions in garden setting","budget":"Mid","php":550,"usd":8.94,"sgd":11.5,"chill_ok":true,"vibe":"Garden restaurant, big comfortable tables, Filipino comfort food.","address":"White Beach Path, Station 3, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=La%20Isla%20Bonita%20Boracay%20Philippines","lat":11.9565,"lng":121.93},
+    {"id":"f30","name":"Bolabog Beach BBQ","station":"Station 3","meal_type":"Lunch","specialty":"Beachside BBQ skewers, grilled corn, pork, chicken","budget":"Low","php":300,"usd":4.88,"sgd":6.27,"chill_ok":false,"vibe":"Casual back-beach BBQ, perfect after watersports at Bulabog.","address":"Bolabog Beach, Station 3, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Bolabog%20Beach%20BBQ%20Boracay%20Philippines","lat":11.9695,"lng":121.933},
+    {"id":"f31","name":"The Pig Out","station":"Station 3","meal_type":"Dinner","specialty":"Lechon de Leche, crispy pata, pork sisig","budget":"Mid","php":750,"usd":12.2,"sgd":15.68,"chill_ok":true,"vibe":"Best farewell dinner for large groups. Lechon is the star.","address":"White Beach Path, Station 3, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=The%20Pig%20Out%20Boracay%20Philippines","lat":11.956,"lng":121.9305},
+    {"id":"f32","name":"El Nido Restaurant","station":"Station 3","meal_type":"Dinner","specialty":"Seafood kare-kare, pinangat, sinigang, homestyle Filipino cooking","budget":"Mid","php":500,"usd":8.13,"sgd":10.45,"chill_ok":true,"vibe":"Local Filipino comfort food, senior-friendly, quiet and cozy.","address":"White Beach Path, Station 3, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=El%20Nido%20Restaurant%20Boracay%20Philippines","lat":11.9558,"lng":121.9298},
+    {"id":"f33","name":"Greenhouse Boracay","station":"Station 3","meal_type":"Drinks/Nightlife","specialty":"Cocktails, mocktails, live acoustic band, garden-style beachfront bar","budget":"Mid","php":300,"usd":4.88,"sgd":6.27,"chill_ok":false,"vibe":"Mellow, shaded, great happy hour vibe. Good for all ages.","address":"White Beach Path, Station 3, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Greenhouse%20Boracay%20Boracay%20Philippines","lat":11.9562,"lng":121.9302},
+    {"id":"f34","name":"Cocomangas Shooter Bar","station":"Station 3","meal_type":"Drinks/Nightlife","specialty":"15-shooter challenge, party games, flavored shooters, DJ","budget":"Mid","php":400,"usd":6.5,"sgd":8.36,"chill_ok":false,"vibe":"Legendary Boracay party bar. 15-shooter challenge is a rite of passage.","address":"White Beach Path, near Regency Hotel, Station 3, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Cocomangas%20Shooter%20Bar%20Boracay%20Philippines","lat":11.9555,"lng":121.9308},
+    {"id":"f35","name":"Ube Mama","station":"Station 2","meal_type":"Snack/Dessert","specialty":"Cocomama sister company","budget":"Low","php":150,"usd":2.44,"sgd":3.14,"chill_ok":true,"vibe":"Boracay-exclusive ube coconut ice cream. Vegan, dairy-free. Multiple branches.","address":"Palengke, D'mall de Boracay, Boracay, 5608 Aklan, Philippines","maps_url":"https://www.google.com/maps/search/?api=1&query=Ube%20Mama%20Boracay%20Philippines","lat":11.9651,"lng":121.9267}
+  ],
+  "pois": [
+    {"id":"p1","category":"Beach","name":"White Beach","best_time":"All day - Sunset 5:30-6:30PM","fee_php":0,"chill_ok":true,"your_pick":true,"description":"World-famous 4km strip of powdery white sand. Best sunset on the island.","address":"White Beach, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=White%20Beach%20Boracay%20Philippines","lat":11.963,"lng":121.9205},
+    {"id":"p2","category":"Beach","name":"Bulabog Beach","best_time":"Sunrise 5:30AM or afternoon","fee_php":0,"chill_ok":true,"your_pick":true,"description":"Back beach, 5-10 min walk from D'Mall. Leaning coconut tree. Watersports hub. Best sunrise spot.","address":"Bulabog Beach, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Bulabog%20Beach%20Boracay%20Philippines","lat":11.9695,"lng":121.9335},
+    {"id":"p3","category":"Beach","name":"Sinagpa Beach","best_time":"Morning or LOW TIDE only","fee_php":0,"chill_ok":false,"your_pick":true,"description":"Northern pocket of Diniwid Beach. Off the beaten path. Cross at LOW TIDE only - dangerous at high tide.","address":"Sinagpa, Balabag, Malay, Aklan 5608 (north of Station 1)","maps_url":"https://www.google.com/maps/search/?api=1&query=Sinagpa%20Beach%20Boracay%20Philippines","lat":11.98,"lng":121.917},
+    {"id":"p4","category":"Beach","name":"Diniwid Beach","best_time":"Morning or golden hour","fee_php":0,"chill_ok":false,"your_pick":false,"description":"Small secluded cove 10 min walk north of Station 1. Same white sand, fraction of the crowds.","address":"Diniwid Beach, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Diniwid%20Beach%20Boracay%20Philippines","lat":11.9785,"lng":121.9183},
+    {"id":"p5","category":"Beach","name":"Puka Shell Beach","best_time":"Morning before day-trippers","fee_php":0,"chill_ok":false,"your_pick":false,"description":"Northern tip, 20 min by e-trike. Coarser sand, puka shells, very peaceful.","address":"Puka Beach, Yapak, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Puka%20Shell%20Beach%20Boracay%20Philippines","lat":11.995,"lng":121.9398},
+    {"id":"p6","category":"Beach","name":"Ilig-Iligan Beach","best_time":"Morning for sunrise","fee_php":0,"chill_ok":false,"your_pick":false,"description":"Southeast coast, quietest beach on island. Great for snorkeling. Bat cave nearby.","address":"Ilig-Iligan Beach, Yapak, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Ilig-Iligan%20Beach%20Boracay%20Philippines","lat":11.9858,"lng":121.9452},
+    {"id":"p7","category":"Beach","name":"Balinghai Beach","best_time":"Afternoon","fee_php":0,"chill_ok":false,"your_pick":false,"description":"Secluded cove, rock formations. Great for kayaking and paddleboarding.","address":"Balinghai Beach, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Balinghai%20Beach%20Boracay%20Philippines","lat":11.982,"lng":121.9162},
+    {"id":"p8","category":"Beach","name":"Tambisaan Beach","best_time":"Sunrise 5:30-6:30AM","fee_php":0,"chill_ok":false,"your_pick":false,"description":"Scenic beach next to Tambisaan Jetty Port. Best sunrise photography spot.","address":"Tambisaan Beach, Manggayad, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Tambisaan%20Beach%20Boracay%20Philippines","lat":11.9545,"lng":121.9395},
+    {"id":"p9","category":"Landmark","name":"Willy's Rock & Mama Mary","best_time":"Low tide - sunrise or sunset","fee_php":0,"chill_ok":true,"your_pick":true,"description":"Boracay's most iconic landmark. Volcanic rock with Virgin Mary grotto. Visit at LOW TIDE.","address":"Station 1 Beachfront, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Willy%27s%20Rock%20%26%20Mama%20Mary%20Boracay%20Philippines","lat":11.9718,"lng":121.9175},
+    {"id":"p10","category":"Landmark","name":"Leaning Coconut Tree","best_time":"Early morning or golden hour","fee_php":0,"chill_ok":true,"your_pick":false,"description":"Most photographed spot on Boracay. Famous slanted coconut tree at Bulabog Beach.","address":"Bulabog Beach, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Leaning%20Coconut%20Tree%20Boracay%20Philippines","lat":11.9698,"lng":121.9338},
+    {"id":"p11","category":"Landmark","name":"Mount Luho Viewpoint","best_time":"Morning for clearest skies","fee_php":120,"chill_ok":false,"your_pick":false,"description":"Highest point on Boracay at 100m. Two decks, 360-degree panoramic views. E-trike access.","address":"Mt. Luho, Yapak, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Mount%20Luho%20Viewpoint%20Boracay%20Philippines","lat":11.981,"lng":121.9382},
+    {"id":"p12","category":"Landmark","name":"Cujo's Keyhole","best_time":"Afternoon (avoid morning tour buses)","fee_php":0,"chill_ok":false,"your_pick":true,"description":"Natural rock arch on the east side near Newcoast. Go afternoon to avoid tour bus crowds.","address":"Newcoast area, Yapak, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Cujo%27s%20Keyhole%20Boracay%20Philippines","lat":11.959,"lng":121.9418},
+    {"id":"p13","category":"Landmark","name":"D'Mall","best_time":"Anytime - evening for browsing","fee_php":0,"chill_ok":true,"your_pick":false,"description":"Main outdoor shopping strip at Station 2. Official group meeting point. Flat, PWD-accessible.","address":"D'Mall, Balabag, Boracay Island, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=D%27Mall%20Boracay%20Philippines","lat":11.9648,"lng":121.926},
+    {"id":"p14","category":"Landmark","name":"Newcoast View Deck","best_time":"Morning","fee_php":100,"chill_ok":false,"your_pick":false,"description":"Panoramic viewpoint inside Fairways development. Less visited. Combine with foam party Jun 25.","address":"Newcoast, Yapak, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Newcoast%20View%20Deck%20Boracay%20Philippines","lat":11.9518,"lng":121.9432},
+    {"id":"p15","category":"Island Stop","name":"Crystal Cove Island","best_time":"Morning island hop","fee_php":200,"chill_ok":false,"your_pick":false,"description":"Two limestone caves, museum, two beaches, stone towers. PHP 200 entrance + boat fee.","address":"Crystal Cove Island, off Carabao Island, Romblon","maps_url":"https://www.google.com/maps/search/?api=1&query=Crystal%20Cove%20Island%20Boracay%20Philippines","lat":11.9448,"lng":121.9078},
+    {"id":"p16","category":"Island Stop","name":"Crocodile Island","best_time":"Morning for best visibility","fee_php":0,"chill_ok":false,"your_pick":false,"description":"Best snorkeling and diving near Boracay. Vibrant coral reefs. 500m from Tambisaan Bay.","address":"Crocodile Island, off Tambisaan Bay, Boracay","maps_url":"https://www.google.com/maps/search/?api=1&query=Crocodile%20Island%20Boracay%20Philippines","lat":11.948,"lng":121.9492},
+    {"id":"p17","category":"Island Stop","name":"Coral Garden","best_time":"Morning for best clarity","fee_php":0,"chill_ok":false,"your_pick":false,"description":"Top snorkeling spot near Crocodile Island. Vibrant coral reefs and abundant fish schools.","address":"Coral Garden, off Boracay Island, Malay, Aklan","maps_url":"https://www.google.com/maps/search/?api=1&query=Coral%20Garden%20Boracay%20Philippines","lat":11.95,"lng":121.9512},
+    {"id":"p18","category":"Island Stop","name":"Ariel's Point","best_time":"Full day - departs 8-9AM","fee_php":2500,"chill_ok":false,"your_pick":false,"description":"Off-island full-day adventure. 5 cliff diving platforms 3-15m. BBQ lunch + unlimited drinks.","address":"Ariel's Point, off Boracay Island, Malay, Aklan","maps_url":"https://www.google.com/maps/search/?api=1&query=Ariel%27s%20Point%20Boracay%20Philippines","lat":11.89,"lng":121.876},
+    {"id":"p19","category":"Experience","name":"Paraw Sailing","best_time":"Sunset 5-6PM","fee_php":1000,"chill_ok":true,"your_pick":false,"description":"Traditional Filipino double-outrigger sailboat. Private charter along White Beach. Very photogenic.","address":"White Beach Beachfront, Station 1, Balabag, Malay, Aklan","maps_url":"https://www.google.com/maps/search/?api=1&query=Paraw%20Sailing%20Boracay%20Philippines","lat":11.9628,"lng":121.9188},
+    {"id":"p20","category":"Experience","name":"White Beach Sunset Spot","best_time":"5:30-6:30PM","fee_php":0,"chill_ok":true,"your_pick":false,"description":"Best free sunset watching point. North end of Station 1 near Willy's Rock.","address":"White Beach North, Station 1, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=White%20Beach%20Sunset%20Spot%20Boracay%20Philippines","lat":11.9728,"lng":121.9175},
+    {"id":"p21","category":"Experience","name":"Bat Cave (Yapak)","best_time":"Afternoon - bats more active","fee_php":150,"chill_ok":false,"your_pick":false,"description":"Cave home to thousands of fruit bats. Local boys offer guided tours nearby.","address":"Yapak, Malay, Aklan 5608 (near Ilig-Iligan Beach)","maps_url":"https://www.google.com/maps/search/?api=1&query=Bat%20Cave%20%28Yapak%29%20Boracay%20Philippines","lat":11.9868,"lng":121.9458},
+    {"id":"p22","category":"Experience","name":"Ati Village Cultural Visit","best_time":"Morning","fee_php":0,"chill_ok":true,"your_pick":false,"description":"Home of Boracay's original indigenous Ati community. Bring school supplies or food donations.","address":"Ati Village, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Ati%20Village%20Cultural%20Visit%20Boracay%20Philippines","lat":11.9622,"lng":121.9358},
+    {"id":"p23","category":"Shopping","name":"D'Talipapa Market","best_time":"Morning for seafood - Evening for souvenirs","fee_php":0,"chill_ok":true,"your_pick":false,"description":"Famous wet market and souvenir hub next to D'Mall. Dried mangoes, shell jewelry, barongs. Negotiate!","address":"D'Talipapa, Station 2, Balabag, Boracay Island, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=D%27Talipapa%20Market%20Boracay%20Philippines","lat":11.9652,"lng":121.9268},
+    {"id":"p24","category":"Shopping","name":"Fairways & Bluewater Resort","best_time":"Morning explore + 4PM foam party (Sat only)","fee_php":700,"chill_ok":false,"your_pick":true,"description":"80-hectare resort. ATV rides, golf, private beach, 6 pools. Venue for Saturday foam party.","address":"Fairways & Bluewater, Yapak, Boracay Island, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Fairways%20%26%20Bluewater%20Resort%20Boracay%20Philippines","lat":11.9618,"lng":121.942},
+    {"id":"p25","category":"Shopping","name":"Mangrove Park","best_time":"Morning or late afternoon","fee_php":0,"chill_ok":true,"your_pick":false,"description":"Station 3, Lugotan. Flat boardwalk through mangrove ecosystem.","address":"Mangrove Park, Lugotan, Balabag, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Mangrove%20Park%20Boracay%20Philippines","lat":11.9558,"lng":121.9302},
+    {"id":"p26","category":"Event","name":"Fairways Foam Party (Jun 25 ONLY)","best_time":"Saturday Jun 25, 4:00-8:00PM","fee_php":0,"chill_ok":false,"your_pick":true,"description":"Weekly Saturday foam party at Fairways & Bluewater. Free for hotel guests. Non-guests call +63 36 288 5700 for day pass. Includes foam party + fire dancing.","address":"Fairways & Bluewater, Yapak, Boracay Island, Malay, Aklan 5608","maps_url":"https://www.google.com/maps/search/?api=1&query=Fairways%20Foam%20Party%20%28Jun%2025%20ONLY%29%20Boracay%20Philippines","lat":11.9618,"lng":121.942}
+  ],
+  "watersports": [
+    {"id":"w1","name":"Parasailing","category":"Air","duration":"10-15 min","php":1500,"usd":24.39,"sgd":31.36,"min_pax":1,"max_pax":2,"best_for":"Thrill-seekers","notes":"Tandem available; go early to avoid queues. Stunning aerial view of white beach."},
+    {"id":"w2","name":"Flyboard","category":"Air/Water","duration":"20 min","php":2500,"usd":40.65,"sgd":52.27,"min_pax":1,"max_pax":1,"best_for":"Adventure lovers","notes":"Rate confirmed ~PHP2,500 for 20 min. Requires brief training. Most operators have instructors. Very photogenic."},
+    {"id":"w3","name":"Banana Boat","category":"Group Water","duration":"15-20 min","php":450,"usd":7.32,"sgd":9.41,"min_pax":6,"max_pax":12,"best_for":"Groups, fun for all ages","notes":"PHP2,700 for 1-6 pax (=PHP450/pax at 6), +PHP450 per extra rider. Max 12. Price above = per pax rate at full 6-person boat."},
+    {"id":"w4","name":"Jet Ski","category":"Water","duration":"30 min","php":3600,"usd":58.54,"sgd":75.27,"min_pax":1,"max_pax":2,"best_for":"Speed lovers","notes":"Local beach price PHP3,600 per unit/30 min (video: Nov 2025). Up to 2 pax share = PHP1,800/pax. Online rate higher at PHP4,000/unit."},
+    {"id":"w5","name":"Island Hopping (Standard)","category":"Boat Tour","duration":"4-5 hrs","php":850,"usd":13.82,"sgd":17.77,"min_pax":1,"max_pax":10,"best_for":"Mixed groups, snorkellers","notes":"Joiner rate PHP850/pax. Covers Crocodile Island, Coral Garden, Crystal Cove. Snorkel gear included. Departs 8-9AM."},
+    {"id":"w6","name":"Island Hopping (Private Boat)","category":"Boat Tour","duration":"4-6 hrs","php":9500,"usd":154.48,"sgd":198.64,"min_pax":1,"max_pax":30,"best_for":"Large groups wanting privacy","notes":"PHP9,500 per BOAT for up to 4 pax. +PHP450/extra pax. For 28 pax: charter ~3 boats. Price above = per boat base rate."},
+    {"id":"w7","name":"Helmet Diving","category":"Underwater","duration":"30-45 min","php":900,"usd":14.63,"sgd":18.82,"min_pax":1,"max_pax":4,"best_for":"Non-swimmers, beginners","notes":"Local beach price PHP900/pax (video: Nov 2025). Walk underwater with helmet. No licence needed. Good for chill group."},
+    {"id":"w8","name":"Fun Dive (1 dive)","category":"Underwater","duration":"45-60 min","php":1200,"usd":19.51,"sgd":25.09,"min_pax":1,"max_pax":6,"best_for":"Certified divers","notes":"Multiple dive sites around Boracay."},
+    {"id":"w9","name":"Discover Scuba Diving","category":"Underwater","duration":"2-3 hrs","php":2500,"usd":40.65,"sgd":52.27,"min_pax":1,"max_pax":4,"best_for":"Beginners","notes":"Includes pool briefing + open water dive. No cert required."},
+    {"id":"w10","name":"Stand Up Paddleboard (SUP)","category":"Water","duration":"30 min","php":300,"usd":4.88,"sgd":6.27,"min_pax":1,"max_pax":1,"best_for":"Relaxed, low-intensity","notes":"Local beach price PHP300/30 min (video: Nov 2025). Great for chill group, can be done near shore."},
+    {"id":"w11","name":"Kayaking (1-person)","category":"Water","duration":"1 hr","php":300,"usd":4.88,"sgd":6.27,"min_pax":1,"max_pax":1,"best_for":"Solo/paired","notes":"Self-guided; explore calm waters north of White Beach."},
+    {"id":"w12","name":"Kayaking (2-person)","category":"Water","duration":"1 hr","php":500,"usd":8.13,"sgd":10.45,"min_pax":2,"max_pax":2,"best_for":"Couples/pairs","notes":"Tandem kayak; easy & fun."},
+    {"id":"w13","name":"Snorkel Tour (guided)","category":"Water","duration":"2 hrs","php":400,"usd":6.5,"sgd":8.36,"min_pax":1,"max_pax":8,"best_for":"Beginners to snorkel","notes":"Gear included; guide leads to best coral spots."},
+    {"id":"w14","name":"Cliff Diving at Ariel's Point","category":"Boat + Activity","duration":"Full day","php":2500,"usd":40.65,"sgd":52.27,"min_pax":1,"max_pax":30,"best_for":"Adventurous group","notes":"Includes boat, BBQ lunch, unlimited drinks, multiple cliff heights."},
+    {"id":"w15","name":"Zorb Ball / Aqua Zorb","category":"Fun","duration":"20 min","php":500,"usd":8.13,"sgd":10.45,"min_pax":1,"max_pax":1,"best_for":"Fun seekers","notes":"Roll in an inflatable ball on the water."},
+    {"id":"w16","name":"Sunset Sailing (Paraw)","category":"Boat","duration":"30 min-1 hr","php":700,"usd":11.38,"sgd":14.64,"min_pax":1,"max_pax":6,"best_for":"All ages, romantic, group sundowners","notes":"Local beach price PHP700/pax (video: Nov 2025). Traditional Filipino outrigger sailboat. Book directly on White Beach."},
+    {"id":"w17","name":"Beach Massage (1 hr)","category":"Wellness","duration":"1 hr","php":450,"usd":7.32,"sgd":9.41,"min_pax":1,"max_pax":1,"best_for":"Chill group, recovery","notes":"Widely available beachside. Proper spas start ~PHP 600."},
+    {"id":"w18","name":"ATV Ride","category":"Land","duration":"30 min","php":1355,"usd":22.03,"sgd":28.33,"min_pax":1,"max_pax":1,"best_for":"Land adventure lovers","notes":"Local beach price PHP1,355/pax (video: Nov 2025). Off-road trail near Bulabog Beach (Station 3 area)."}
+  ],
+  "watersports_zones": [
+    {"id":"wz1","name":"White Beach Watersports Zone","lat":11.9640,"lng":121.9195,"note":"Operators line White Beach S1-S2 beachfront. Walk along the shore to find parasailing, jet ski, helmet diving, banana boat, paraw sailing, and snorkel tour operators."},
+    {"id":"wz2","name":"Bulabog Beach Watersports Zone","lat":11.9700,"lng":121.9338,"note":"East-side back beach. Kitesurfing, windsurfing, flyboard, island hopping departures, and beach BBQ."}
+  ]
+};
+
+// ============================================================
+// APP LOGIC
+// ============================================================
+(function() {
+  'use strict';
+
+  const D = window.TRIPBUDDY_DATA;
+  const RATES   = { PHP: 1, SGD: 1/47.85, USD: 1/61.50, CAD: 0.025 };
+  const SYMBOLS = { PHP: '₱', SGD: 'S$', USD: 'US$', CAD: 'CA$' };
+  const CURRENCIES = [
+    { code: 'PHP', label: 'PHP', sub: 'Philippine Peso' },
+    { code: 'SGD', label: 'SGD', sub: 'Singapore Dollar' },
+    { code: 'USD', label: 'USD', sub: 'US Dollar' },
+    { code: 'CAD', label: 'CAD', sub: 'Canadian Dollar' }
+  ];
+
+  const state = {
+    currency: localStorage.getItem('tb_currency') || 'PHP',
+    userLat: null,
+    userLng: null,
+    showDistance: localStorage.getItem('tb_distance') !== 'false',
+    foodSearch: '',
+    foodFilter: 'All',
+    foodSort: 'Station',
+    poiFilter: 'All',
+    waterFilter: 'All',
+    layers: { food: true, poi: true, water: true },
+    activeTab: 'map',
+    map: null,
+    markerGroups: { food: null, poi: null, water: null },
+    userMarker: null,
+    sheetDragStart: null,
+    sheetDragOffset: 0
+  };
+
+  // ---------------- Helpers ----------------
+  const $  = (s, c=document) => c.querySelector(s);
+  const $$ = (s, c=document) => Array.from(c.querySelectorAll(s));
+  const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  function formatPrice(php, cur) {
+    cur = cur || state.currency;
+    const v = php * RATES[cur];
+    const dec = cur === 'PHP' ? 0 : 2;
+    return SYMBOLS[cur] + v.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+
+  function secondaryPrices(php) {
+    return ['PHP','SGD','USD','CAD']
+      .filter(c => c !== state.currency)
+      .map(c => formatPrice(php, c))
+      .join(' · ');
+  }
+
+  function haversine(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+              Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function distFor(item) {
+    if (state.userLat == null || item.lat == null) return null;
+    return haversine(state.userLat, state.userLng, item.lat, item.lng);
+  }
+
+  function fmtDist(km) {
+    if (km == null) return '';
+    if (km < 1) return Math.round(km * 1000) + ' m';
+    return km.toFixed(1) + ' km';
+  }
+
+  let toastT;
+  function toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastT);
+    toastT = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  // ---------------- Tab Switching ----------------
+  function setTab(name) {
+    state.activeTab = name;
+    $$('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+    $$('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    if (name === 'map' && state.map) {
+      setTimeout(() => state.map.invalidateSize(), 50);
+    }
+  }
+  $$('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => setTab(btn.dataset.tab));
+  });
+
+  // ---------------- Map ----------------
+  function initMap() {
+    const map = L.map('map', {
+      zoomControl: false,
+      attributionControl: true,
+      minZoom: 13,
+      maxZoom: 18
+    }).setView([11.9640, 121.9260], 15);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 19
+    }).addTo(map);
+
+    state.map = map;
+
+    const foodGroup  = L.layerGroup().addTo(map);
+    const poiGroup   = L.layerGroup().addTo(map);
+    const waterGroup = L.layerGroup().addTo(map);
+    state.markerGroups = { food: foodGroup, poi: poiGroup, water: waterGroup };
+
+    // Food markers
+    D.food.forEach(f => {
+      const icon = L.divIcon({
+        className: 'custom-marker',
+        html: `<div class="marker-pin food">${emojiFor('food')}</div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+      const m = L.marker([f.lat, f.lng], { icon });
+      m.on('click', () => openSheet(buildFoodSheet(f)));
+      foodGroup.addLayer(m);
+    });
+
+    // POI markers
+    D.pois.forEach(p => {
+      const cls = 'marker-pin poi' + (p.your_pick ? ' your-pick' : '');
+      const icon = L.divIcon({
+        className: 'custom-marker',
+        html: `<div class="${cls}">${p.your_pick ? '★' : emojiFor('poi', p.category)}</div>`,
+        iconSize: p.your_pick ? [32,32] : [28,28],
+        iconAnchor: p.your_pick ? [16,16] : [14,14]
+      });
+      const m = L.marker([p.lat, p.lng], { icon });
+      m.on('click', () => openSheet(buildPoiSheet(p)));
+      poiGroup.addLayer(m);
+    });
+
+    // Watersports zone markers
+    D.watersports_zones.forEach(z => {
+      const icon = L.divIcon({
+        className: 'custom-marker',
+        html: `<div class="marker-pin water">${emojiFor('water')}</div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+      const m = L.marker([z.lat, z.lng], { icon });
+      m.on('click', () => openSheet(buildZoneSheet(z)));
+      waterGroup.addLayer(m);
+    });
+  }
+
+  function emojiFor(kind, category) {
+    if (kind === 'food') return '🍴'; // fork-knife plate
+    if (kind === 'water') return '🌊'; // wave
+    if (kind === 'poi') {
+      if (category === 'Beach') return '🏖';
+      if (category === 'Landmark') return '🏛';
+      if (category === 'Island Stop') return '⚓';
+      if (category === 'Experience') return '✨';
+      if (category === 'Shopping') return '🛒';
+      if (category === 'Event') return '🎉';
+      return '📍';
+    }
+    return '';
+  }
+
+  // Layer toggle pills
+  $$('.pill').forEach(p => {
+    p.addEventListener('click', () => {
+      const layer = p.dataset.layer;
+      state.layers[layer] = !state.layers[layer];
+      p.classList.toggle('active', state.layers[layer]);
+      const g = state.markerGroups[layer];
+      if (!g) return;
+      if (state.layers[layer]) state.map.addLayer(g);
+      else state.map.removeLayer(g);
+    });
+  });
+
+  // ---------------- Geolocation ----------------
+  function requestLocation(onSuccess) {
+    if (!navigator.geolocation) {
+      toast('Geolocation not supported');
+      return;
+    }
+    toast('Locating…');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        state.userLat = pos.coords.latitude;
+        state.userLng = pos.coords.longitude;
+        updateUserMarker();
+        renderAll();
+        toast('Location updated');
+        if (onSuccess) onSuccess();
+      },
+      err => {
+        toast('Location unavailable. Enable it in browser settings.');
+        console.warn(err);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  }
+
+  function updateUserMarker() {
+    if (!state.map || state.userLat == null) return;
+    if (state.userMarker) state.map.removeLayer(state.userMarker);
+    const icon = L.divIcon({
+      className: 'user-marker',
+      html: '<div class="user-dot"></div>',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
+    });
+    state.userMarker = L.marker([state.userLat, state.userLng], { icon, interactive: false }).addTo(state.map);
+  }
+
+  $('#locate-me').addEventListener('click', () => {
+    requestLocation(() => {
+      if (state.map && state.userLat) {
+        state.map.setView([state.userLat, state.userLng], 16, { animate: true });
+      }
+    });
+  });
+
+  $('#nearest-fab').addEventListener('click', () => {
+    if (state.userLat == null) {
+      requestLocation(() => {
+        state.map.setView([state.userLat, state.userLng], 16, { animate: true });
+        toast('Showing nearest spots to you');
+      });
+    } else {
+      state.map.setView([state.userLat, state.userLng], 16, { animate: true });
+      toast('Showing nearest spots to you');
+    }
+  });
+
+  // ---------------- Food Tab ----------------
+  const FOOD_CHIPS = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Drinks', 'Snack'];
+  function renderFoodChips() {
+    const el = $('#food-chips');
+    el.innerHTML = FOOD_CHIPS.map(c =>
+      `<button class="chip ${c===state.foodFilter?'active':''}" data-v="${c}">${c}</button>`
+    ).join('');
+    $$('.chip', el).forEach(c => c.addEventListener('click', () => {
+      state.foodFilter = c.dataset.v;
+      renderFood();
+    }));
+  }
+
+  function foodMatches(f) {
+    if (state.foodFilter !== 'All' && !f.meal_type.toLowerCase().includes(state.foodFilter.toLowerCase())) return false;
+    if (state.foodSearch) {
+      const q = state.foodSearch.toLowerCase();
+      if (!f.name.toLowerCase().includes(q) && !f.specialty.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  }
+
+  function renderFood() {
+    let items = D.food.filter(foodMatches);
+    if (state.foodSort === 'Price') {
+      items = items.slice().sort((a,b) => a.php - b.php);
+    } else if (state.foodSort === 'Nearest' && state.userLat != null) {
+      items = items.slice().sort((a,b) => (distFor(a)||0) - (distFor(b)||0));
+    } else {
+      items = items.slice().sort((a,b) => a.station.localeCompare(b.station));
+    }
+
+    const list = $('#food-list');
+    if (!items.length) {
+      list.innerHTML = '<div class="empty">No matches. Try a different filter.</div>';
+      return;
+    }
+    list.innerHTML = items.map(foodCard).join('');
+    $$('.card', list).forEach((c, i) => {
+      c.addEventListener('click', () => openSheet(buildFoodSheet(items[i])));
+    });
+  }
+
+  function foodCard(f) {
+    const dist = distFor(f);
+    const distStr = (state.showDistance && dist != null) ? `<span class="dist">📍 ${fmtDist(dist)}</span>` : '';
+    const budgetCls = 'budget-' + f.budget.toLowerCase();
+    const chill = f.chill_ok ? '<span class="badge chill">♿ Chill OK</span>' : '';
+    return `<div class="card">
+      <div class="card-top">
+        <div class="card-title-wrap">
+          <div class="card-name">🍴 ${esc(f.name)}</div>
+          <div class="card-sub">${esc(f.specialty)}</div>
+        </div>
+        <div class="card-tag">${esc(f.station)}</div>
+      </div>
+      <div class="badges">
+        <span class="badge ${budgetCls}">${esc(f.budget)}</span>
+        <span class="badge">${esc(f.meal_type)}</span>
+        ${chill}
+      </div>
+      <div class="card-foot">
+        <span class="card-price">${formatPrice(f.php)}<span class="sec">${secondaryPrices(f.php)}</span></span>
+        ${distStr}
+      </div>
+    </div>`;
+  }
+
+  $('#food-search').addEventListener('input', e => {
+    state.foodSearch = e.target.value;
+    renderFood();
+  });
+
+  $('#food-sort').addEventListener('click', () => {
+    const order = ['Station', 'Price', 'Nearest'];
+    let i = order.indexOf(state.foodSort);
+    state.foodSort = order[(i + 1) % order.length];
+    if (state.foodSort === 'Nearest' && state.userLat == null) {
+      toast('Tap Locate Me first');
+      state.foodSort = order[(i + 2) % order.length];
+    }
+    const lbl = state.foodSort === 'Price' ? 'Price ↑'
+              : state.foodSort === 'Nearest' ? 'Nearest'
+              : 'Station';
+    $('#food-sort').textContent = lbl + ' ▾';
+    renderFood();
+  });
+
+  // ---------------- POI Tab ----------------
+  const POI_CHIPS = ['All', 'Beach', 'Landmark', 'Island Stop', 'Experience', 'Shopping', 'Event'];
+  function renderPoiChips() {
+    const el = $('#poi-chips');
+    el.innerHTML = POI_CHIPS.map(c =>
+      `<button class="chip ${c===state.poiFilter?'active':''}" data-v="${c}">${c}</button>`
+    ).join('');
+    $$('.chip', el).forEach(c => c.addEventListener('click', () => {
+      state.poiFilter = c.dataset.v;
+      renderPoi();
+    }));
+  }
+
+  function renderPoi() {
+    const list = $('#poi-list');
+    const filtered = D.pois.filter(p => state.poiFilter === 'All' || p.category === state.poiFilter);
+    const picks   = filtered.filter(p => p.your_pick);
+    const others  = filtered.filter(p => !p.your_pick);
+
+    let html = '';
+    if (picks.length) {
+      html += `<div class="section-label">⭐ Your Picks</div>`;
+      html += picks.map(p => poiCard(p, true)).join('');
+      if (others.length) html += `<div class="section-label">All Spots</div>`;
+    }
+    html += others.map(p => poiCard(p, false)).join('');
+    if (!filtered.length) html = '<div class="empty">No spots match this filter.</div>';
+    list.innerHTML = html;
+    $$('.card', list).forEach((c, i) => {
+      const item = [...picks, ...others][i];
+      c.addEventListener('click', () => openSheet(buildPoiSheet(item)));
+    });
+  }
+
+  function poiCard(p, highlight) {
+    const dist = distFor(p);
+    const distStr = (state.showDistance && dist != null) ? `<span class="dist">📍 ${fmtDist(dist)}</span>` : '';
+    const feeBadge = p.fee_php === 0
+      ? '<span class="badge free">Free</span>'
+      : `<span class="badge fee">${formatPrice(p.fee_php)}</span>`;
+    const chill = p.chill_ok ? '<span class="badge chill">♿ Chill OK</span>' : '';
+    const star = p.your_pick ? '<span style="color:var(--gold)">⭐</span> ' : '';
+    return `<div class="card${highlight?' your-pick':''}">
+      <div class="card-top">
+        <div class="card-title-wrap">
+          <div class="card-name">${star}${esc(p.name)}</div>
+          <div class="card-sub">${esc(p.description)}</div>
+        </div>
+        <div class="card-tag">${esc(p.category)}</div>
+      </div>
+      <div class="badges">
+        ${feeBadge}
+        <span class="badge">${esc(p.best_time)}</span>
+        ${chill}
+      </div>
+      ${distStr ? `<div class="card-foot"><span></span>${distStr}</div>` : ''}
+    </div>`;
+  }
+
+  // ---------------- Watersports Tab ----------------
+  const WATER_CHIPS = ['All', 'Air', 'Water', 'Underwater', 'Boat', 'Land', 'Wellness'];
+  function renderWaterChips() {
+    const el = $('#water-chips');
+    el.innerHTML = WATER_CHIPS.map(c =>
+      `<button class="chip ${c===state.waterFilter?'active':''}" data-v="${c}">${c}</button>`
+    ).join('');
+    $$('.chip', el).forEach(c => c.addEventListener('click', () => {
+      state.waterFilter = c.dataset.v;
+      renderWater();
+    }));
+  }
+
+  function waterMatches(w) {
+    const f = state.waterFilter;
+    if (f === 'All') return true;
+    const c = w.category;
+    if (f === 'Water')      return c.includes('Water') && !c.includes('Underwater');
+    if (f === 'Underwater') return c.includes('Underwater');
+    return c.includes(f);
+  }
+
+  function renderWater() {
+    const items = D.watersports.filter(waterMatches);
+    const host = $('#water-items');
+    if (!items.length) {
+      host.innerHTML = '<div class="empty">No activities match this filter.</div>';
+      return;
+    }
+    host.innerHTML = items.map(waterCard).join('');
+    $$('.card', host).forEach((c, i) => {
+      c.addEventListener('click', () => openSheet(buildWaterSheet(items[i])));
+    });
+  }
+
+  function waterCard(w) {
+    return `<div class="card">
+      <div class="card-top">
+        <div class="card-title-wrap">
+          <div class="card-name">🌊 ${esc(w.name)}</div>
+          <div class="card-sub">${esc(w.duration)} · ${esc(w.best_for)}</div>
+        </div>
+        <div class="card-tag">${esc(w.category)}</div>
+      </div>
+      <div class="badges">
+        <span class="badge">${w.min_pax===w.max_pax ? w.min_pax+' pax' : w.min_pax+'-'+w.max_pax+' pax'}</span>
+      </div>
+      <div class="card-foot">
+        <span class="card-price">${formatPrice(w.php)}<span class="sec">${secondaryPrices(w.php)}</span></span>
+        <span style="color:var(--muted)">Find on beach</span>
+      </div>
+    </div>`;
+  }
+
+  $('#water-note-close').addEventListener('click', () => {
+    $('#water-note').style.display = 'none';
+  });
+
+  // ---------------- Settings ----------------
+  function renderCurrencyRows() {
+    const el = $('#currency-rows');
+    el.innerHTML = CURRENCIES.map(c =>
+      `<div class="radio-row ${c.code===state.currency?'active':''}" data-c="${c.code}">
+        <div>
+          <div class="lbl">${c.code} <span style="color:var(--muted);font-weight:400">· ${c.sub}</span></div>
+        </div>
+        <div class="radio-dot"></div>
+      </div>`
+    ).join('');
+    $$('.radio-row', el).forEach(r => r.addEventListener('click', () => {
+      state.currency = r.dataset.c;
+      localStorage.setItem('tb_currency', state.currency);
+      renderCurrencyRows();
+      renderAll();
+    }));
+  }
+
+  function renderDistanceToggle() {
+    $('#distance-toggle').classList.toggle('on', state.showDistance);
+  }
+  $('#distance-toggle-row').addEventListener('click', () => {
+    state.showDistance = !state.showDistance;
+    localStorage.setItem('tb_distance', String(state.showDistance));
+    renderDistanceToggle();
+    renderAll();
+  });
+
+  $('#settings-locate').addEventListener('click', () => requestLocation());
+
+  // ---------------- Bottom Sheet ----------------
+  const sheet     = $('#bottom-sheet');
+  const backdrop  = $('#sheet-backdrop');
+  const sheetContent = $('#sheet-content');
+
+  function openSheet(html) {
+    sheetContent.innerHTML = html;
+    sheet.style.transform = '';
+    requestAnimationFrame(() => {
+      sheet.classList.add('open');
+      backdrop.classList.add('open');
+    });
+  }
+  function closeSheet() {
+    sheet.classList.remove('open');
+    backdrop.classList.remove('open');
+  }
+  backdrop.addEventListener('click', closeSheet);
+
+  // Bind action buttons inside sheet via delegation
+  sheetContent.addEventListener('click', e => {
+    const navBtn  = e.target.closest('[data-nav]');
+    const copyBtn = e.target.closest('[data-copy]');
+    const goWater = e.target.closest('[data-go-water]');
+    if (navBtn) {
+      const url = navBtn.dataset.nav;
+      window.open(url, '_blank', 'noopener');
+    } else if (copyBtn) {
+      const addr = copyBtn.dataset.copy;
+      copyToClipboard(addr);
+    } else if (goWater) {
+      closeSheet();
+      setTab('water');
+    }
+  });
+
+  function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(
+        () => toast('Address copied'),
+        () => fallbackCopy(text)
+      );
+    } else {
+      fallbackCopy(text);
+    }
+  }
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); toast('Address copied'); } catch(e) { toast('Copy failed'); }
+    document.body.removeChild(ta);
+  }
+
+  function navUrl(lat, lng) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  }
+
+  function buildFoodSheet(f) {
+    const dist = distFor(f);
+    const chill = f.chill_ok ? '<span class="badge chill">♿ Chill OK</span>' : '';
+    const budgetCls = 'budget-' + f.budget.toLowerCase();
+    return `
+      <div class="sheet-cat"><span>🍴 Food · ${esc(f.station)} · ${esc(f.meal_type)}</span></div>
+      <div class="sheet-name">${esc(f.name)}</div>
+      <div class="sheet-badges">
+        <span class="badge ${budgetCls}">${esc(f.budget)} budget</span>
+        ${chill}
+      </div>
+      <div class="sheet-meta">
+        <div class="meta-row"><span class="ico">📍</span><span>${esc(f.address)}</span></div>
+        <div class="meta-row"><span class="ico">🍴</span><span>${esc(f.specialty)}</span></div>
+      </div>
+      <div class="sheet-price-block">
+        <div class="sheet-price-main">${formatPrice(f.php)}</div>
+        <div class="sheet-price-secs">${secondaryPrices(f.php)}</div>
+      </div>
+      <div class="sheet-desc">${esc(f.vibe)}</div>
+      <div class="sheet-actions">
+        <button class="nav-btn" data-nav="${navUrl(f.lat, f.lng)}">🗺 Navigate</button>
+        <button class="copy-btn" data-copy="${esc(f.address)}">📋 Copy Address</button>
+      </div>
+      ${dist != null ? `<div class="sheet-dist-line">${fmtDist(dist)} away</div>` : ''}
+    `;
+  }
+
+  function buildPoiSheet(p) {
+    const dist = distFor(p);
+    const chill = p.chill_ok ? '<span class="badge chill">♿ Chill OK</span>' : '';
+    const feeBadge = p.fee_php === 0
+      ? '<span class="badge free">Free entry</span>'
+      : `<span class="badge fee">${formatPrice(p.fee_php)} entry</span>`;
+    const pick = p.your_pick ? '<span class="pick-flag">⭐ Your Pick</span>' : '';
+    return `
+      <div class="sheet-cat"><span>📍 ${esc(p.category)}</span>${pick}</div>
+      <div class="sheet-name">${esc(p.name)}</div>
+      <div class="sheet-badges">
+        ${feeBadge}
+        ${chill}
+      </div>
+      <div class="sheet-meta">
+        <div class="meta-row"><span class="ico">📍</span><span>${esc(p.address)}</span></div>
+        <div class="meta-row"><span class="ico">⏰</span><span>${esc(p.best_time)}</span></div>
+      </div>
+      <div class="sheet-desc">${esc(p.description)}</div>
+      <div class="sheet-actions">
+        <button class="nav-btn" data-nav="${navUrl(p.lat, p.lng)}">🗺 Navigate</button>
+        <button class="copy-btn" data-copy="${esc(p.address)}">📋 Copy Address</button>
+      </div>
+      ${dist != null ? `<div class="sheet-dist-line">${fmtDist(dist)} away</div>` : ''}
+    `;
+  }
+
+  function buildWaterSheet(w) {
+    return `
+      <div class="sheet-cat"><span>🌊 Watersports · ${esc(w.category)}</span></div>
+      <div class="sheet-name">${esc(w.name)}</div>
+      <div class="sheet-badges">
+        <span class="badge">${esc(w.duration)}</span>
+        <span class="badge">${w.min_pax===w.max_pax ? w.min_pax+' pax' : w.min_pax+'-'+w.max_pax+' pax'}</span>
+      </div>
+      <div class="sheet-meta">
+        <div class="meta-row"><span class="ico">✨</span><span>Best for: ${esc(w.best_for)}</span></div>
+        <div class="meta-row"><span class="ico">📍</span><span>Walk-up: White Beach S1-S2 or Bulabog Beach operators</span></div>
+      </div>
+      <div class="sheet-price-block">
+        <div class="sheet-price-main">${formatPrice(w.php)}</div>
+        <div class="sheet-price-secs">${secondaryPrices(w.php)}</div>
+      </div>
+      <div class="sheet-desc">${esc(w.notes)}</div>
+      <div class="sheet-actions">
+        <button class="nav-btn" data-go-water>🌊 All Watersports</button>
+        <button class="copy-btn" data-copy="${esc(w.name)} — Boracay walk-up rate ~${formatPrice(w.php)}">📋 Copy Info</button>
+      </div>
+    `;
+  }
+
+  function buildZoneSheet(z) {
+    const dist = distFor(z);
+    const list = D.watersports.map(w =>
+      `<div class="zone-item">
+        <div class="zone-item-name">${esc(w.name)}</div>
+        <div class="zone-item-meta">${esc(w.category)} · ${esc(w.duration)} · ${formatPrice(w.php)}</div>
+      </div>`
+    ).join('');
+    return `
+      <div class="sheet-cat"><span>🌊 Watersports Zone</span></div>
+      <div class="sheet-name">${esc(z.name)}</div>
+      <div class="sheet-desc">${esc(z.note)}</div>
+      <div class="sheet-actions">
+        <button class="nav-btn" data-nav="${navUrl(z.lat, z.lng)}">🗺 Navigate to Zone</button>
+        <button class="copy-btn" data-go-water>🌊 View All</button>
+      </div>
+      ${dist != null ? `<div class="sheet-dist-line">${fmtDist(dist)} away</div>` : ''}
+      <div style="margin-top:18px"><div class="setting-label">Activities here</div><div class="zone-list">${list}</div></div>
+    `;
+  }
+
+  // Sheet swipe-to-dismiss
+  const handleRow = $('#sheet-handle-row');
+  function onTouchStart(e) {
+    const t = e.touches ? e.touches[0] : e;
+    state.sheetDragStart = t.clientY;
+    state.sheetDragOffset = 0;
+    sheet.classList.add('dragging');
+  }
+  function onTouchMove(e) {
+    if (state.sheetDragStart == null) return;
+    const t = e.touches ? e.touches[0] : e;
+    let dy = t.clientY - state.sheetDragStart;
+    if (dy < 0) dy = dy / 4; // resist upward drag
+    state.sheetDragOffset = dy;
+    sheet.style.transform = `translateY(${Math.max(0, dy)}px)`;
+  }
+  function onTouchEnd() {
+    if (state.sheetDragStart == null) return;
+    sheet.classList.remove('dragging');
+    const dy = state.sheetDragOffset;
+    state.sheetDragStart = null;
+    state.sheetDragOffset = 0;
+    if (dy > 100) {
+      sheet.style.transform = '';
+      closeSheet();
+    } else {
+      sheet.style.transform = '';
+    }
+  }
+  handleRow.addEventListener('touchstart', onTouchStart, { passive: true });
+  handleRow.addEventListener('touchmove',  onTouchMove,  { passive: true });
+  handleRow.addEventListener('touchend',   onTouchEnd);
+  handleRow.addEventListener('touchcancel',onTouchEnd);
+  // Mouse drag (desktop)
+  let mouseDown = false;
+  handleRow.addEventListener('mousedown', e => { mouseDown = true; onTouchStart(e); });
+  window.addEventListener('mousemove', e => { if (mouseDown) onTouchMove(e); });
+  window.addEventListener('mouseup',   e => { if (mouseDown) { mouseDown = false; onTouchEnd(); } });
+
+  // ESC to close
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeSheet();
+  });
+
+  // ---------------- Re-render hub ----------------
+  function renderAll() {
+    renderFood();
+    renderPoi();
+    renderWater();
+  }
+
+  // ---------------- Init ----------------
+  function init() {
+    initMap();
+    renderFoodChips();
+    renderPoiChips();
+    renderWaterChips();
+    renderCurrencyRows();
+    renderDistanceToggle();
+    renderAll();
+    // Initial sort label
+    $('#food-sort').textContent = 'Station ▾';
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
