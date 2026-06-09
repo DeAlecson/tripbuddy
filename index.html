@@ -222,15 +222,16 @@ input {
   border-radius: 50%;
   background: var(--accent);
   color: var(--bg);
-  font-size: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 6px 20px rgba(0,212,255,0.4);
   z-index: 40;
-  transition: transform 0.15s;
+  transition: transform 0.15s, background 0.2s;
 }
 .fab:active { transform: scale(0.92); }
+.fab svg { display: block; }
+.fab.gps-on { background: #4A9EFF; box-shadow: 0 6px 20px rgba(74,158,255,0.5); }
 
 /* Map markers */
 .custom-marker { background: none !important; border: none !important; }
@@ -831,7 +832,16 @@ input {
         <button class="pill active" data-layer="poi"><span class="pill-dot"></span>POI</button>
         <button class="pill active" data-layer="water"><span class="pill-dot"></span>Water</button>
       </div>
-      <button class="fab" id="nearest-fab" aria-label="Show nearest spots">🎯</button>
+      <button class="fab" id="nearest-fab" aria-label="Find my location" title="Find my location">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/>
+          <circle cx="12" cy="12" r="7.5"/>
+          <line x1="12" y1="1.5" x2="12" y2="4.5"/>
+          <line x1="12" y1="19.5" x2="12" y2="22.5"/>
+          <line x1="1.5" y1="12" x2="4.5" y2="12"/>
+          <line x1="19.5" y1="12" x2="22.5" y2="12"/>
+        </svg>
+      </button>
     </section>
 
     <!-- ============ FOOD TAB ============ -->
@@ -1046,6 +1056,9 @@ window.TRIPBUDDY_DATA = {
   const D = window.TRIPBUDDY_DATA;
   const RATES   = { PHP: 1, SGD: 1/47.85, USD: 1/61.50, CAD: 0.025 };
   const SYMBOLS = { PHP: '₱', SGD: 'S$', USD: 'US$', CAD: 'CA$' };
+  // Map locked to Boracay + nearby island stops (Ariel's Point, Crystal Cove, Crocodile Island).
+  const BORACAY_SW = [11.86, 121.85];
+  const BORACAY_NE = [12.02, 121.975];
   const CURRENCIES = [
     { code: 'PHP', label: 'PHP', sub: 'Philippine Peso' },
     { code: 'SGD', label: 'SGD', sub: 'Singapore Dollar' },
@@ -1136,17 +1149,24 @@ window.TRIPBUDDY_DATA = {
 
   // ---------------- Map ----------------
   function initMap() {
+    const bounds = L.latLngBounds(BORACAY_SW, BORACAY_NE);
     const map = L.map('map', {
       zoomControl: false,
       attributionControl: true,
       minZoom: 13,
-      maxZoom: 18
+      maxZoom: 18,
+      maxBounds: bounds,
+      maxBoundsViscosity: 1.0
     }).setView([11.9640, 121.9260], 15);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap',
-      maxZoom: 19
+      maxZoom: 19,
+      bounds: bounds,
+      noWrap: true
     }).addTo(map);
+
+    state.boracayBounds = bounds;
 
     state.map = map;
 
@@ -1258,27 +1278,27 @@ window.TRIPBUDDY_DATA = {
       iconAnchor: [9, 9]
     });
     state.userMarker = L.marker([state.userLat, state.userLng], { icon, interactive: false }).addTo(state.map);
+    $('#nearest-fab').classList.add('gps-on');
   }
 
-  $('#locate-me').addEventListener('click', () => {
-    requestLocation(() => {
-      if (state.map && state.userLat) {
-        state.map.setView([state.userLat, state.userLng], 16, { animate: true });
-      }
-    });
-  });
-
-  $('#nearest-fab').addEventListener('click', () => {
-    if (state.userLat == null) {
-      requestLocation(() => {
-        state.map.setView([state.userLat, state.userLng], 16, { animate: true });
-        toast('Showing nearest spots to you');
-      });
+  function panToUser() {
+    if (state.userLat == null || !state.map) return;
+    const ll = L.latLng(state.userLat, state.userLng);
+    if (state.boracayBounds && state.boracayBounds.contains(ll)) {
+      setTab('map');
+      state.map.setView(ll, 16, { animate: true });
+      toast('Centered on your location');
     } else {
-      state.map.setView([state.userLat, state.userLng], 16, { animate: true });
-      toast('Showing nearest spots to you');
+      toast("You're outside Boracay — distances on cards still work");
     }
-  });
+  }
+
+  function handleLocateClick() {
+    if (state.userLat == null) requestLocation(panToUser);
+    else panToUser();
+  }
+  $('#locate-me').addEventListener('click', handleLocateClick);
+  $('#nearest-fab').addEventListener('click', handleLocateClick);
 
   // ---------------- Food Tab ----------------
   const FOOD_CHIPS = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Drinks', 'Snack'];
