@@ -1840,30 +1840,31 @@ window.TRIPBUDDY_DATA = {
       maxBoundsViscosity: 1.0
     }).setView([11.9640, 121.9260], 15);
 
-    // Primary tiles: Stadia Alidade Smooth Dark (already dark, fits the navy palette).
-    // Falls back to OSM if Stadia is unavailable.
-    const stadia = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
-      attribution: '© <a href="https://stadiamaps.com/" target="_blank" rel="noopener">Stadia</a> © OpenStreetMap',
+    // Primary tiles: CARTO Dark Matter (free, no API key, fits the navy palette).
+    // Falls back to OSM if CARTO is ever unavailable.
+    const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a> © OpenStreetMap',
+      subdomains: 'abcd',
       maxZoom: 20,
       bounds: bounds,
       noWrap: true,
       detectRetina: true
     });
-    let stadiaFailed = false;
-    stadia.on('tileerror', () => {
-      if (stadiaFailed) return;
-      stadiaFailed = true;
-      map.removeLayer(stadia);
+    let darkFailed = false;
+    dark.on('tileerror', () => {
+      if (darkFailed) return;
+      darkFailed = true;
+      map.removeLayer(dark);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
         maxZoom: 19, bounds, noWrap: true
       }).addTo(map);
     });
-    stadia.on('load', () => {
+    dark.on('load', () => {
       const pane = document.querySelector('.leaflet-tile-pane');
       if (pane) pane.classList.add('tiles-dark');
     });
-    stadia.addTo(map);
+    dark.addTo(map);
 
     state.boracayBounds = bounds;
 
