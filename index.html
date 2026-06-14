@@ -2099,7 +2099,9 @@ window.TRIPBUDDY_DATA = {
       `<button class="chip ${c===state.foodFilter?'active':''}" data-v="${c}">${c}</button>`
     ).join('');
     $$('.chip', el).forEach(c => c.addEventListener('click', () => {
+      if (state.foodFilter === c.dataset.v) return;
       state.foodFilter = c.dataset.v;
+      renderFoodChips();   // re-render so the active class follows state
       renderFood();
     }));
   }
@@ -2200,7 +2202,9 @@ window.TRIPBUDDY_DATA = {
       `<button class="chip ${c===state.poiFilter?'active':''}" data-v="${c}">${c}</button>`
     ).join('');
     $$('.chip', el).forEach(c => c.addEventListener('click', () => {
+      if (state.poiFilter === c.dataset.v) return;
       state.poiFilter = c.dataset.v;
+      renderPoiChips();
       renderPoi();
     }));
   }
@@ -2259,7 +2263,9 @@ window.TRIPBUDDY_DATA = {
       `<button class="chip ${c===state.waterFilter?'active':''}" data-v="${c}">${c}</button>`
     ).join('');
     $$('.chip', el).forEach(c => c.addEventListener('click', () => {
+      if (state.waterFilter === c.dataset.v) return;
       state.waterFilter = c.dataset.v;
+      renderWaterChips();
       renderWater();
     }));
   }
