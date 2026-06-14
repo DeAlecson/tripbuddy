@@ -14,27 +14,74 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
 :root {
-  --bg: #0B1120;
-  --surface: #131D2E;
-  --surface-2: #1A2640;
-  --surface-3: #22324F;
-  --border: #1E3050;
-  --text: #E8EDF5;
-  --muted: #6B7A99;
-  --accent: #00D4FF;
-  --accent-dim: #003D4D;
-  --coral: #FF6B6B;
-  --gold: #F5A623;
-  --green: #3DDC97;
-  --red: #FF6B6B;
+  /* Surface ramp */
+  --bg:        #0A0F1C;
+  --surface:   #131C2E;
+  --surface-2: #1A2440;
+  --surface-3: #232F4F;
+
+  /* Ink ramp (WCAG-tuned, brighter than before) */
+  --ink-1: #F4F7FC;   /* headings */
+  --ink-2: #E2E8F2;   /* body */
+  --ink-3: #98A4C0;   /* secondary body, passes AA on surface */
+  --ink-4: #6A7796;   /* tertiary labels */
+
+  /* Backwards-compat aliases for unchanged code */
+  --text:  var(--ink-2);
+  --muted: var(--ink-3);
   --white: #FFFFFF;
+
+  /* Borders */
+  --border:   rgba(255,255,255,0.06);
+  --border-2: rgba(255,255,255,0.10);
+
+  /* Brand */
+  --accent:     #5BC8FF;     /* slightly softer than #00D4FF, easier on the eye */
+  --accent-2:   #4AA8DD;
+  --accent-dim: rgba(91,200,255,0.14);
+  --coral:      #FF7676;
+  --gold:       #F5B044;
+  --green:      #4ADBA0;
+  --red:        #FF6B6B;
+
+  /* Typography */
   --font-display: 'Syne', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
+  --font-body:    'DM Sans', sans-serif;
+
+  /* Radius */
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 20px;
+  --radius-xl: 28px;
   --radius-full: 999px;
-  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.25);
+  --shadow:    0 8px 28px rgba(0,0,0,0.45);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.55);
+
+  /* Motion — durations */
+  --dur-instant: 120ms;
+  --dur-quick:   180ms;
+  --dur-base:    240ms;
+  --dur-emph:    320ms;
+  --dur-sheet:   400ms;
+
+  /* Motion — easing */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-drawer:    cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Z-index scale */
+  --z-map: 0;
+  --z-overlay: 100;
+  --z-tab-bar: 200;
+  --z-sheet-backdrop: 300;
+  --z-sheet: 310;
+  --z-toast: 400;
+
+  /* Layout */
   --tab-h: 64px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
@@ -45,18 +92,28 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 body {
   font-family: var(--font-body);
   background: var(--bg);
-  color: var(--text);
+  color: var(--ink-2);
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   user-select: none;
 }
 button {
   font: inherit; color: inherit; background: none; border: 0; cursor: pointer;
 }
-input {
-  font: inherit; color: inherit;
+button:focus-visible,
+[role="tab"]:focus-visible,
+.chip:focus-visible,
+.radio-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
+input { font: inherit; color: inherit; }
+input:focus-visible { outline: none; }
+svg { display: block; }
+svg.icon { width: 1em; height: 1em; flex-shrink: 0; }
 
 /* ===================== Layout ===================== */
 #app {
@@ -820,6 +877,532 @@ input {
   .list-title { font-size: 20px; }
   .card { padding: 11px; }
 }
+
+/* ===================================================================
+   POLISH LAYER — overrides + additions from the design pass
+   =================================================================== */
+
+/* Map container respects new z-index scale */
+#map { z-index: var(--z-map); }
+.map-header { z-index: var(--z-overlay); }
+.layer-pills { z-index: var(--z-overlay); }
+.fab { z-index: var(--z-overlay); }
+.tab-bar { z-index: var(--z-tab-bar); }
+.sheet-backdrop { z-index: var(--z-sheet-backdrop); }
+.bottom-sheet { z-index: var(--z-sheet); }
+.toast { z-index: var(--z-toast); }
+
+/* ---------- Locate button (map header) ---------- */
+.locate-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  background: rgba(19,28,46,0.78);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  transition: transform var(--dur-instant) var(--ease-out-quart),
+              background var(--dur-quick) var(--ease-out-quart);
+}
+.locate-btn .ico-slot { display: inline-flex; font-size: 15px; color: var(--accent); }
+.locate-btn:active { transform: scale(0.96); }
+
+/* ---------- Wordmark ---------- */
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  color: var(--ink-1);
+}
+.wordmark .dot { color: var(--accent); }
+
+/* ---------- Layer pills ---------- */
+.layer-pills { gap: 7px; }
+.pill {
+  background: rgba(19,28,46,0.78);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--ink-3);
+  padding: 8px 13px 8px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: color var(--dur-quick) var(--ease-out-quart),
+              background var(--dur-quick) var(--ease-out-quart),
+              border-color var(--dur-quick) var(--ease-out-quart),
+              transform var(--dur-instant) var(--ease-out-quart);
+}
+.pill:active { transform: scale(0.96); }
+.pill .pill-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ink-4);
+  transition: background var(--dur-quick) var(--ease-out-quart),
+              box-shadow var(--dur-quick) var(--ease-out-quart);
+}
+.pill.active { color: var(--ink-1); border-color: rgba(91,200,255,0.45); background: rgba(91,200,255,0.10); }
+.pill.active[data-layer="food"]  .pill-dot { background: var(--coral); box-shadow: 0 0 8px rgba(255,118,118,0.55); }
+.pill.active[data-layer="poi"]   .pill-dot { background: var(--accent); box-shadow: 0 0 8px rgba(91,200,255,0.55); }
+.pill.active[data-layer="water"] .pill-dot { background: var(--gold); box-shadow: 0 0 8px rgba(245,176,68,0.55); }
+
+/* ---------- Tab bar — pill indicator ---------- */
+.tab-bar {
+  background: rgba(10,15,28,0.88);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.tab-btn::after { display: none !important; }   /* kill old underline */
+.tab-btn {
+  position: relative;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: color var(--dur-quick) var(--ease-out-quart);
+  min-height: 48px;     /* WCAG touch target */
+}
+.tab-btn .tab-ico {
+  display: inline-flex;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ink-3);
+  transition: color var(--dur-quick) var(--ease-out-quart),
+              transform var(--dur-quick) var(--ease-spring);
+}
+.tab-btn.active .tab-ico { color: var(--accent); transform: translateY(-1px) scale(1.04); }
+.tab-btn.active .tab-label { color: var(--accent); }
+.tab-btn .tab-label { transition: color var(--dur-quick) var(--ease-out-quart); }
+.tab-indicator {
+  position: absolute;
+  top: 0;
+  width: 32px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--accent);
+  pointer-events: none;
+  transform: translateX(0);
+  transition: transform var(--dur-base) var(--ease-out-quart),
+              opacity var(--dur-quick) var(--ease-out-quart);
+  opacity: 1;
+  box-shadow: 0 0 12px rgba(91,200,255,0.55);
+}
+
+/* ---------- Section title with icon ---------- */
+.list-title { display: inline-flex; align-items: center; gap: 10px; letter-spacing: -0.02em; }
+.list-title .title-ico { display: inline-flex; font-size: 22px; color: var(--accent); }
+
+/* ---------- Search field with leading icon ---------- */
+.search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.search-ico {
+  position: absolute;
+  left: 14px;
+  display: inline-flex;
+  font-size: 16px;
+  color: var(--ink-4);
+  pointer-events: none;
+}
+.search-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px 12px 38px;
+  color: var(--ink-2);
+  font-size: 14px;
+  outline: none;
+  transition: border-color var(--dur-quick) var(--ease-out-quart);
+}
+.search-input::placeholder { color: var(--ink-4); }
+.search-input:focus { border-color: var(--accent); }
+
+/* ---------- Sort toggle ---------- */
+.sort-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  transition: transform var(--dur-instant) var(--ease-out-quart);
+}
+.sort-toggle:active { transform: scale(0.97); }
+.sort-toggle .ico-slot { display: inline-flex; font-size: 14px; color: var(--ink-3); }
+
+/* ---------- Chips ---------- */
+.chip {
+  transition: background var(--dur-quick) var(--ease-out-quart),
+              color var(--dur-quick) var(--ease-out-quart),
+              border-color var(--dur-quick) var(--ease-out-quart),
+              transform var(--dur-instant) var(--ease-out-quart);
+  min-height: 32px;
+  letter-spacing: -0.005em;
+}
+.chip:active { transform: scale(0.96); }
+.chip.active { box-shadow: 0 4px 14px rgba(91,200,255,0.25); }
+
+/* ---------- Cards ---------- */
+.card {
+  border-color: rgba(30,48,80,0.6);
+  transition: transform var(--dur-instant) var(--ease-out-quart),
+              border-color var(--dur-quick) var(--ease-out-quart),
+              background var(--dur-quick) var(--ease-out-quart);
+}
+.card-name { letter-spacing: -0.015em; }
+.card-sub { color: var(--ink-3); }
+.card-tag { color: var(--ink-4); font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.06em; }
+.card-note { color: var(--ink-4); font-size: 11px; }
+.card.your-pick {
+  border-color: rgba(245,176,68,0.42);
+  background: linear-gradient(165deg, rgba(245,176,68,0.05), var(--surface) 55%);
+  box-shadow: inset 0 1px 0 rgba(245,176,68,0.18);
+}
+.card-foot { padding-top: 2px; border-top: 1px solid rgba(255,255,255,0.04); }
+.pick-glyph { display: inline-flex; color: var(--gold); font-size: 13px; vertical-align: -1px; margin-right: 4px; }
+
+/* Distance pill in cards */
+.dist {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px 4px 7px;
+  border-radius: var(--radius-full);
+  background: rgba(91,200,255,0.10);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(91,200,255,0.22);
+}
+.dist svg { font-size: 12px; }
+.dist-unknown {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink-4);
+  padding: 4px 6px;
+}
+
+/* Badges */
+.badge { letter-spacing: 0.01em; transition: background var(--dur-quick) var(--ease-out-quart); }
+.badge.chill svg { font-size: 11px; }
+
+/* ---------- Note banner ---------- */
+.note-banner {
+  background: linear-gradient(180deg, rgba(91,200,255,0.08), rgba(91,200,255,0.03));
+  border: 1px solid rgba(91,200,255,0.22);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.note-banner .note-ico { display: inline-flex; font-size: 16px; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.note-banner .note-body { flex: 1; }
+.note-banner .close { background: none; border: 0; padding: 2px 4px; color: var(--ink-3); display: inline-flex; }
+.note-banner .close svg { font-size: 14px; }
+
+/* ---------- Bottom sheet polish ---------- */
+.sheet-backdrop.open { backdrop-filter: blur(8px) saturate(0.85); -webkit-backdrop-filter: blur(8px) saturate(0.85); background: rgba(0,0,0,0.45); }
+.bottom-sheet {
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 70%);
+  box-shadow: 0 -20px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+  border-top-left-radius: var(--radius-xl);
+  border-top-right-radius: var(--radius-xl);
+}
+.sheet-handle {
+  height: 3px;
+  background: rgba(255,255,255,0.18);
+  transition: transform var(--dur-instant) var(--ease-out-quart), background var(--dur-quick) var(--ease-out-quart);
+}
+.sheet-handle-row:active .sheet-handle { transform: scaleX(0.85); background: rgba(255,255,255,0.32); }
+.sheet-cat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+.sheet-cat-text { display: inline-flex; align-items: center; gap: 8px; }
+.sheet-cat-text svg { font-size: 14px; }
+.sheet-cat .pick-flag { display: inline-flex; align-items: center; gap: 4px; color: var(--gold); font-size: 10.5px; letter-spacing: 0.06em; }
+.sheet-cat .pick-flag svg { font-size: 12px; }
+.sheet-name { text-wrap: balance; letter-spacing: -0.022em; color: var(--ink-1); margin-top: 4px; }
+.sheet-meta .meta-row { font-size: 13px; color: var(--ink-2); }
+.sheet-meta .meta-ico { color: var(--ink-3); font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.sheet-desc { color: var(--ink-3); }
+.sheet-price-block { background: rgba(255,255,255,0.03); }
+.sheet-price-main { letter-spacing: -0.02em; color: var(--ink-1); }
+.sheet-actions { gap: 10px; }
+.sheet-actions .nav-btn,
+.sheet-actions .copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  padding: 14px 14px;
+  border-radius: var(--radius-md);
+  transition: transform var(--dur-instant) var(--ease-out-quart),
+              opacity var(--dur-quick) var(--ease-out-quart),
+              background var(--dur-quick) var(--ease-out-quart);
+}
+.sheet-actions .nav-btn { background: var(--accent); color: #0A0F1C; box-shadow: 0 6px 18px rgba(91,200,255,0.28); }
+.sheet-actions .nav-btn:active { transform: scale(0.97); }
+.sheet-actions .copy-btn { background: rgba(255,255,255,0.05); color: var(--ink-2); border: 1px solid rgba(255,255,255,0.08); }
+.sheet-actions .copy-btn:active { transform: scale(0.97); background: rgba(255,255,255,0.08); }
+.sheet-actions .copy-btn.copied { color: var(--green); border-color: rgba(74,219,160,0.4); background: rgba(74,219,160,0.10); }
+.sheet-actions svg { font-size: 15px; }
+.zone-list-wrap { margin-top: 18px; }
+.zone-item { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.06); transition: background var(--dur-quick) var(--ease-out-quart); }
+
+/* ---------- Map markers (new pill design) ---------- */
+.marker-pin {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  position: relative;
+  transition: transform var(--dur-quick) var(--ease-spring);
+}
+.marker-pin svg { width: 16px; height: 16px; stroke-width: 2; }
+.marker-pin.food { background: var(--coral); }
+.marker-pin.poi { background: var(--accent); color: #0A0F1C; }
+.marker-pin.water { background: var(--gold); color: #0A0F1C; }
+.marker-pin.your-pick {
+  width: 36px; height: 36px;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(245,176,68,0.32), 0 6px 16px rgba(0,0,0,0.55);
+}
+.marker-pin.your-pick svg { width: 18px; height: 18px; }
+.pick-rosette {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px; height: 16px;
+  background: var(--gold);
+  color: #1A1200;
+  border-radius: 50%;
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid #FFFFFF;
+  font-weight: 700;
+  line-height: 1;
+}
+.leaflet-marker-icon:hover .marker-pin { transform: translateY(-2px) scale(1.05); }
+/* Fade markers in without touching Leaflet's positional transform (which lives on .leaflet-marker-icon itself). */
+.marker-pin { opacity: 0; animation: pinIn 0.5s var(--ease-out-quart) forwards; }
+@keyframes pinIn {
+  0%   { opacity: 0; transform: scale(0.6); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* User location dot — refined pulse */
+.user-dot {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  position: relative;
+  animation: none;        /* old keyframe killed */
+}
+.user-dot-pulse {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.35;
+  animation: userPulse 1.8s var(--ease-out-quart) infinite;
+}
+@keyframes userPulse {
+  0%   { transform: scale(0.55); opacity: 0.5; }
+  80%  { transform: scale(2.2);  opacity: 0; }
+  100% { transform: scale(2.2);  opacity: 0; }
+}
+
+/* Map tile dark filter (fallback when Stadia isn't loaded) */
+.leaflet-tile-pane { filter: brightness(0.85) contrast(0.95); transition: filter var(--dur-base) var(--ease-out-quart); }
+.leaflet-tile-pane.tiles-dark { filter: none; }   /* Stadia already dark */
+.leaflet-control-attribution { background: rgba(10,15,28,0.7) !important; font-size: 9px !important; padding: 2px 6px !important; }
+.leaflet-control-attribution a { color: var(--accent) !important; }
+
+/* ---------- FAB (already-built SVG icon) ---------- */
+.fab.idle {
+  animation: fabBreath 4s var(--ease-out-quart) infinite;
+}
+@keyframes fabBreath {
+  0%, 100% { transform: scale(1); box-shadow: 0 6px 20px rgba(91,200,255,0.4); }
+  50%      { transform: scale(1.04); box-shadow: 0 8px 26px rgba(91,200,255,0.55); }
+}
+.fab.gps-burst::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  pointer-events: none;
+  animation: fabBurst 0.7s var(--ease-out-expo) 1;
+}
+@keyframes fabBurst {
+  0%   { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* ---------- Tab pane transitions ---------- */
+.tab-pane { transition: opacity var(--dur-quick) var(--ease-out-quart); }
+.tab-pane.fade-in {
+  animation: tabIn var(--dur-quick) var(--ease-out-quart) both;
+}
+@keyframes tabIn {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- List entry stagger (no JS; pure CSS) ---------- */
+.list-body .card,
+.zone-item {
+  animation: cardIn var(--dur-base) var(--ease-out-quart) both;
+}
+@keyframes cardIn {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.985); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.list-body .card:nth-child(1)  { animation-delay: 0ms; }
+.list-body .card:nth-child(2)  { animation-delay: 40ms; }
+.list-body .card:nth-child(3)  { animation-delay: 80ms; }
+.list-body .card:nth-child(4)  { animation-delay: 120ms; }
+.list-body .card:nth-child(5)  { animation-delay: 160ms; }
+.list-body .card:nth-child(6)  { animation-delay: 200ms; }
+.list-body .card:nth-child(7)  { animation-delay: 240ms; }
+.list-body .card:nth-child(n+8) { animation-delay: 280ms; }
+
+/* Section label icon */
+.section-label { display: flex; align-items: center; gap: 6px; }
+.section-label svg { color: var(--gold); font-size: 13px; }
+
+/* ---------- Settings: segmented currency ---------- */
+.currency-segment {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background: var(--bg);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.currency-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--ink-3);
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  font-size: 13px;
+  transition: color var(--dur-quick) var(--ease-out-quart),
+              background var(--dur-quick) var(--ease-out-quart);
+}
+.currency-cell .sym { font-size: 18px; font-weight: 700; color: var(--ink-1); }
+.currency-cell .sub { font-family: var(--font-body); font-size: 10.5px; font-weight: 500; color: var(--ink-4); letter-spacing: 0.02em; }
+.currency-cell.active {
+  background: var(--accent);
+  color: #0A0F1C;
+  box-shadow: 0 4px 14px rgba(91,200,255,0.32);
+}
+.currency-cell.active .sym,
+.currency-cell.active .sub { color: #0A0F1C; }
+.currency-cell:active { transform: scale(0.98); }
+
+/* ---------- Settings: app-info ---------- */
+.app-info { color: var(--ink-3); }
+.app-info .brand { color: var(--ink-1); }
+.app-info .heart { display: inline-flex; color: var(--coral); font-size: 12px; vertical-align: -2px; margin: 0 2px; }
+
+/* ---------- Toast polish ---------- */
+.toast {
+  background: rgba(26,36,64,0.95);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: opacity var(--dur-quick) var(--ease-out-quart),
+              transform var(--dur-base) var(--ease-out-expo);
+}
+
+/* ---------- Empty state ---------- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 60px 20px;
+  color: var(--ink-3);
+}
+.empty .empty-ico {
+  display: inline-flex;
+  font-size: 32px;
+  color: var(--ink-4);
+}
+.empty .empty-msg { font-weight: 600; color: var(--ink-2); }
+.empty .empty-hint { font-size: 12px; color: var(--ink-4); }
+
+/* ---------- Settings radio rows (kept for distance toggle wrap) ---------- */
+.radio-row .lbl { color: var(--ink-2); }
+.radio-row .sub { color: var(--ink-4); }
+
+/* ---------- Reduced motion: kill all decorative motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .list-body .card,
+  .zone-item,
+  .tab-pane.fade-in,
+  .fab.idle,
+  .user-dot-pulse,
+  .fab.gps-burst::after,
+  .marker-pin {
+    animation: none !important;
+  }
+  .marker-pin { opacity: 1 !important; }
+  .tab-pane { transition: none !important; }
+  .marker-pin,
+  .leaflet-marker-icon:hover .marker-pin { transition: none !important; transform: none !important; }
+}
+
+/* ---------- Tiny tweak: bottom-sheet content padding for headline space ---------- */
+.sheet-content { padding-top: 6px; }
 </style>
 </head>
 <body>
@@ -831,7 +1414,7 @@ input {
       <div class="map-header">
         <div class="wordmark">Trip<span class="dot">Buddy</span></div>
         <button class="locate-btn" id="locate-me" aria-label="Locate me">
-          <span>📍</span><span>Locate Me</span>
+          <span data-icon="crosshair" class="ico-slot"></span><span>Locate</span>
         </button>
       </div>
       <div id="map"></div>
@@ -856,10 +1439,13 @@ input {
     <section id="tab-food" class="tab-pane scrollable" aria-label="Food">
       <header class="list-header">
         <div class="list-title-row">
-          <h1 class="list-title">🍽 Food</h1>
-          <button class="sort-toggle" id="food-sort">Station ▾</button>
+          <h1 class="list-title"><span class="title-ico" data-icon="utensils"></span>Food</h1>
+          <button class="sort-toggle" id="food-sort"><span data-icon="sort" class="ico-slot"></span><span class="sort-label">Station</span></button>
         </div>
-        <input type="text" class="search-input" id="food-search" placeholder="Search by name or specialty…">
+        <label class="search-wrap">
+          <span class="search-ico" data-icon="search"></span>
+          <input type="text" class="search-input" id="food-search" placeholder="Search restaurants, specialties…">
+        </label>
         <div class="chips" id="food-chips"></div>
       </header>
       <div class="list-body" id="food-list"></div>
@@ -869,7 +1455,7 @@ input {
     <section id="tab-poi" class="tab-pane scrollable" aria-label="Points of Interest">
       <header class="list-header">
         <div class="list-title-row">
-          <h1 class="list-title">📍 Points of Interest</h1>
+          <h1 class="list-title"><span class="title-ico" data-icon="pin"></span>Points of Interest</h1>
         </div>
         <div class="chips" id="poi-chips"></div>
       </header>
@@ -880,15 +1466,15 @@ input {
     <section id="tab-water" class="tab-pane scrollable" aria-label="Watersports">
       <header class="list-header">
         <div class="list-title-row">
-          <h1 class="list-title">🌊 Watersports</h1>
+          <h1 class="list-title"><span class="title-ico" data-icon="waves"></span>Watersports</h1>
         </div>
         <div class="chips" id="water-chips"></div>
       </header>
       <div class="list-body" id="water-list">
-        <div class="note-banner" id="water-note">
-          <span>💡</span>
-          <span>Prices are local beach walk-up rates (Nov 2025). Negotiate on the beach — online rates may be 20–40% higher.</span>
-          <button class="close" id="water-note-close" aria-label="Dismiss">×</button>
+        <div class="note-banner" id="water-note" role="note">
+          <span class="note-ico" data-icon="lightbulb"></span>
+          <span class="note-body">Prices are local beach walk-up rates (Nov 2025). Negotiate on the beach — online rates may be 20–40% higher.</span>
+          <button class="close" id="water-note-close" aria-label="Dismiss"><span data-icon="x" class="ico-slot"></span></button>
         </div>
         <div id="water-items"></div>
       </div>
@@ -898,7 +1484,7 @@ input {
     <section id="tab-settings" class="tab-pane scrollable" aria-label="Settings">
       <header class="list-header">
         <div class="list-title-row">
-          <h1 class="list-title">⚙️ Settings</h1>
+          <h1 class="list-title"><span class="title-ico" data-icon="settings"></span>Settings</h1>
         </div>
       </header>
       <div class="settings-body">
@@ -925,8 +1511,8 @@ input {
           <div class="app-info">
             <span class="brand">TripBuddy · Boracay Jun 2026</span>
             22–26 June · 28 Adults + Baby Bella<br>
-            Henann Crystal Sands & La Carmela<br>
-            Built with ♥ by Alecson
+            Henann Crystal Sands &amp; La Carmela<br>
+            Built with <span class="heart" data-icon="heart"></span> by Alecson
           </div>
         </div>
 
@@ -937,11 +1523,12 @@ input {
 
   <!-- ============ TAB BAR ============ -->
   <nav class="tab-bar" role="tablist">
-    <button class="tab-btn active" data-tab="map" role="tab"><span class="tab-ico">🗺</span><span>Map</span></button>
-    <button class="tab-btn" data-tab="food" role="tab"><span class="tab-ico">🍽</span><span>Food</span></button>
-    <button class="tab-btn" data-tab="poi" role="tab"><span class="tab-ico">📍</span><span>POI</span></button>
-    <button class="tab-btn" data-tab="water" role="tab"><span class="tab-ico">🌊</span><span>Water</span></button>
-    <button class="tab-btn" data-tab="settings" role="tab"><span class="tab-ico">⚙️</span><span>Settings</span></button>
+    <span class="tab-indicator" id="tab-indicator" aria-hidden="true"></span>
+    <button class="tab-btn active" data-tab="map" role="tab"><span class="tab-ico" data-icon="map"></span><span class="tab-label">Map</span></button>
+    <button class="tab-btn" data-tab="food" role="tab"><span class="tab-ico" data-icon="utensils"></span><span class="tab-label">Food</span></button>
+    <button class="tab-btn" data-tab="poi" role="tab"><span class="tab-ico" data-icon="pin"></span><span class="tab-label">POI</span></button>
+    <button class="tab-btn" data-tab="water" role="tab"><span class="tab-ico" data-icon="waves"></span><span class="tab-label">Water</span></button>
+    <button class="tab-btn" data-tab="settings" role="tab"><span class="tab-ico" data-icon="settings"></span><span class="tab-label">Settings</span></button>
   </nav>
 </div>
 
@@ -958,6 +1545,14 @@ input {
 <div class="toast" id="toast"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script type="module">
+  // Motion One — vanilla ESM build for declarative spring/stagger animations.
+  // Bound to window.__motion so the legacy IIFE can use it once loaded.
+  // App degrades gracefully (CSS transitions only) if this fails.
+  import { animate, stagger, inView, spring } from 'https://cdn.jsdelivr.net/npm/motion@11.11.17/+esm';
+  window.__motion = { animate, stagger, inView, spring };
+  window.dispatchEvent(new Event('motion-ready'));
+</script>
 
 <script>
 // ============================================================
@@ -1069,6 +1664,48 @@ window.TRIPBUDDY_DATA = {
 (function() {
   'use strict';
 
+  // ---------- Inline SVG icon library (Phosphor/Lucide-class line icons) ----------
+  // currentColor + 1.6 stroke + 24 viewBox. Sized via CSS `font-size` on parent.
+  const ICONS = {
+    map:        '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14"/><path d="M15 6v14"/>',
+    utensils:   '<path d="M7 3v8a2 2 0 0 1-2 2H4"/><path d="M7 3v18"/><path d="M11 3v8"/><path d="M17 3c-1.5 0-3 1-3 4v4c0 1 .5 2 2 2h1v8"/>',
+    pin:        '<path d="M12 21s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/>',
+    waves:      '<path d="M3 7c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2"/><path d="M3 12c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2"/><path d="M3 17c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2"/>',
+    settings:   '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.4.4.9.6 1.5.6H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
+    palm:       '<path d="M12 22V12"/><path d="M12 12c0-3 3-5 7-5"/><path d="M12 12c0-3-3-5-7-5"/><path d="M12 12c-2-3-1-7 2-9"/><path d="M12 12c2-3 1-7-2-9"/>',
+    building:   '<path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/><path d="M9 9h.01M15 9h.01M9 13h.01M15 13h.01"/>',
+    anchor:     '<circle cx="12" cy="5" r="2"/><path d="M12 7v15"/><path d="M5 12a7 7 0 0 0 14 0"/><path d="M3 12h4M17 12h4"/>',
+    sparkle:    '<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
+    bag:        '<path d="M6 7h12l-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
+    confetti:   '<path d="M5 21 12 4"/><path d="M5 21l8-3 6-6-5-5-6 6-3 8Z"/><path d="M19 5v3M16 2v3M22 8h-3M18 11h-3"/>',
+    martini:    '<path d="M4 4h16l-8 9-8-9Z"/><path d="M12 13v7"/><path d="M8 20h8"/>',
+    clock:      '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    clipboard:  '<rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>',
+    check:      '<path d="M5 12l5 5L20 7"/>',
+    wallet:     '<path d="M3 7h18v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path d="M3 7V5a2 2 0 0 1 2-2h13"/><circle cx="17" cy="14" r="1.4"/>',
+    accessible: '<circle cx="12" cy="4" r="2"/><path d="M12 6v6h4l3 7"/><path d="M12 12l-3 2-2 6"/>',
+    star:       '<path d="M12 3l2.7 5.6 6.3.9-4.5 4.4 1 6.1-5.5-2.9-5.5 2.9 1-6.1L3 9.5l6.3-.9L12 3Z"/>',
+    lightbulb:  '<path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2Z"/>',
+    heart:      '<path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.5 12 21 12 21Z"/>',
+    crosshair:  '<circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="2" fill="currentColor"/>',
+    search:     '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+    chevron:    '<path d="m9 6 6 6-6 6"/>',
+    x:          '<path d="M6 6l12 12M18 6 6 18"/>',
+    info:       '<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".5" fill="currentColor"/>',
+    sort:       '<path d="M7 4v16M7 4l-3 3M7 4l3 3"/><path d="M17 20V4M17 20l-3-3M17 20l3-3"/>'
+  };
+  function icon(name, opts) {
+    opts = opts || {};
+    const svg = ICONS[name] || ICONS.pin;
+    const cls = 'icon' + (opts.cls ? ' ' + opts.cls : '');
+    return '<svg class="' + cls + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + svg + '</svg>';
+  }
+
+  // Motion One — set once loaded; bind UI animations gracefully if/when it arrives
+  let MOTION = window.__motion || null;
+  if (!MOTION) window.addEventListener('motion-ready', () => { MOTION = window.__motion; });
+  const REDUCE_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   const D = window.TRIPBUDDY_DATA;
   const RATES   = { PHP: 1, SGD: 1/47.85, USD: 1/61.50, CAD: 0.025 };
   const SYMBOLS = { PHP: '₱', SGD: 'S$', USD: 'US$', CAD: 'CA$' };
@@ -1152,9 +1789,19 @@ window.TRIPBUDDY_DATA = {
 
   // ---------------- Tab Switching ----------------
   function setTab(name) {
+    if (state.activeTab === name) return;
     state.activeTab = name;
-    $$('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+    $$('.tab-pane').forEach(p => {
+      const isActive = p.id === 'tab-' + name;
+      p.classList.toggle('active', isActive);
+      if (isActive && !REDUCE_MOTION) {
+        p.classList.remove('fade-in');
+        void p.offsetWidth;          // force reflow so the animation re-runs
+        p.classList.add('fade-in');
+      }
+    });
     $$('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    positionTabIndicator();
     if (name === 'map' && state.map) {
       setTimeout(() => state.map.invalidateSize(), 50);
     }
@@ -1162,6 +1809,24 @@ window.TRIPBUDDY_DATA = {
   $$('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => setTab(btn.dataset.tab));
   });
+
+  function positionTabIndicator(skipAnim) {
+    const bar = $('.tab-bar');
+    const ind = $('#tab-indicator');
+    if (!bar || !ind) return;
+    const active = $('.tab-btn.active', bar);
+    if (!active) return;
+    const barRect = bar.getBoundingClientRect();
+    const rect = active.getBoundingClientRect();
+    const indW = 32;
+    const x = rect.left - barRect.left + rect.width / 2 - indW / 2;
+    if (skipAnim) ind.style.transition = 'none';
+    ind.style.width = indW + 'px';
+    ind.style.transform = 'translateX(' + x + 'px)';
+    if (skipAnim) requestAnimationFrame(() => { ind.style.transition = ''; });
+  }
+  window.addEventListener('resize', () => positionTabIndicator(true));
+  window.addEventListener('orientationchange', () => setTimeout(() => positionTabIndicator(true), 100));
 
   // ---------------- Map ----------------
   function initMap() {
@@ -1175,12 +1840,30 @@ window.TRIPBUDDY_DATA = {
       maxBoundsViscosity: 1.0
     }).setView([11.9640, 121.9260], 15);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap',
-      maxZoom: 19,
+    // Primary tiles: Stadia Alidade Smooth Dark (already dark, fits the navy palette).
+    // Falls back to OSM if Stadia is unavailable.
+    const stadia = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+      attribution: '© <a href="https://stadiamaps.com/" target="_blank" rel="noopener">Stadia</a> © OpenStreetMap',
+      maxZoom: 20,
       bounds: bounds,
-      noWrap: true
-    }).addTo(map);
+      noWrap: true,
+      detectRetina: true
+    });
+    let stadiaFailed = false;
+    stadia.on('tileerror', () => {
+      if (stadiaFailed) return;
+      stadiaFailed = true;
+      map.removeLayer(stadia);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19, bounds, noWrap: true
+      }).addTo(map);
+    });
+    stadia.on('load', () => {
+      const pane = document.querySelector('.leaflet-tile-pane');
+      if (pane) pane.classList.add('tiles-dark');
+    });
+    stadia.addTo(map);
 
     state.boracayBounds = bounds;
 
@@ -1193,57 +1876,51 @@ window.TRIPBUDDY_DATA = {
 
     // Food markers
     D.food.forEach(f => {
-      const icon = L.divIcon({
-        className: 'custom-marker',
-        html: `<div class="marker-pin food">${emojiFor('food')}</div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
-      });
-      const m = L.marker([f.lat, f.lng], { icon });
+      const m = L.marker([f.lat, f.lng], { icon: makeMarkerIcon('food') });
       m.on('click', () => openSheet(buildFoodSheet(f)));
       foodGroup.addLayer(m);
     });
 
     // POI markers
     D.pois.forEach(p => {
-      const cls = 'marker-pin poi' + (p.your_pick ? ' your-pick' : '');
-      const icon = L.divIcon({
-        className: 'custom-marker',
-        html: `<div class="${cls}">${p.your_pick ? '★' : emojiFor('poi', p.category)}</div>`,
-        iconSize: p.your_pick ? [32,32] : [28,28],
-        iconAnchor: p.your_pick ? [16,16] : [14,14]
-      });
-      const m = L.marker([p.lat, p.lng], { icon });
+      const m = L.marker([p.lat, p.lng], { icon: makeMarkerIcon('poi', p.category, p.your_pick) });
       m.on('click', () => openSheet(buildPoiSheet(p)));
       poiGroup.addLayer(m);
     });
 
     // Watersports zone markers
     D.watersports_zones.forEach(z => {
-      const icon = L.divIcon({
-        className: 'custom-marker',
-        html: `<div class="marker-pin water">${emojiFor('water')}</div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
-      });
-      const m = L.marker([z.lat, z.lng], { icon });
+      const m = L.marker([z.lat, z.lng], { icon: makeMarkerIcon('water') });
       m.on('click', () => openSheet(buildZoneSheet(z)));
       waterGroup.addLayer(m);
     });
   }
 
-  function emojiFor(kind, category) {
-    if (kind === 'food') return '🍴'; // fork-knife plate
-    if (kind === 'water') return '🌊'; // wave
+  function makeMarkerIcon(kind, category, pick) {
+    const cls = 'marker-pin ' + kind + (pick ? ' your-pick' : '');
+    const star = pick ? '<span class="pick-rosette">★</span>' : '';
+    const size = pick ? 36 : 30;
+    const anchor = size / 2;
+    return L.divIcon({
+      className: 'custom-marker',
+      html: '<div class="' + cls + '">' + icon(iconFor(kind, category)) + star + '</div>',
+      iconSize: [size, size],
+      iconAnchor: [anchor, anchor]
+    });
+  }
+
+  function iconFor(kind, category) {
+    if (kind === 'food') return 'utensils';
+    if (kind === 'water') return 'waves';
     if (kind === 'poi') {
-      if (category === 'Beach') return '🏖';
-      if (category === 'Landmark') return '🏛';
-      if (category === 'Island Stop') return '⚓';
-      if (category === 'Experience') return '✨';
-      if (category === 'Shopping') return '🛒';
-      if (category === 'Event') return '🎉';
-      if (category === 'Nightlife') return '🍸';
-      return '📍';
+      if (category === 'Beach') return 'palm';
+      if (category === 'Landmark') return 'building';
+      if (category === 'Island Stop') return 'anchor';
+      if (category === 'Experience') return 'sparkle';
+      if (category === 'Shopping') return 'bag';
+      if (category === 'Event') return 'confetti';
+      if (category === 'Nightlife') return 'martini';
+      return 'pin';
     }
     return '';
   }
@@ -1288,14 +1965,21 @@ window.TRIPBUDDY_DATA = {
   function updateUserMarker() {
     if (!state.map || state.userLat == null) return;
     if (state.userMarker) state.map.removeLayer(state.userMarker);
-    const icon = L.divIcon({
+    const userIcon = L.divIcon({
       className: 'user-marker',
-      html: '<div class="user-dot"></div>',
-      iconSize: [18, 18],
-      iconAnchor: [9, 9]
+      html: '<div class="user-dot"><div class="user-dot-pulse"></div></div>',
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
     });
-    state.userMarker = L.marker([state.userLat, state.userLng], { icon, interactive: false }).addTo(state.map);
-    $('#nearest-fab').classList.add('gps-on');
+    state.userMarker = L.marker([state.userLat, state.userLng], { icon: userIcon, interactive: false }).addTo(state.map);
+    const fab = $('#nearest-fab');
+    const firstTime = !fab.classList.contains('gps-on');
+    fab.classList.remove('idle');
+    fab.classList.add('gps-on');
+    if (firstTime && !REDUCE_MOTION) {
+      fab.classList.add('gps-burst');
+      setTimeout(() => fab.classList.remove('gps-burst'), 800);
+    }
   }
 
   function panToUser() {
@@ -1351,7 +2035,7 @@ window.TRIPBUDDY_DATA = {
 
     const list = $('#food-list');
     if (!items.length) {
-      list.innerHTML = '<div class="empty">No matches. Try a different filter.</div>';
+      list.innerHTML = emptyState('search', 'No matches', 'Try a different filter or clear the search.');
       return;
     }
     list.innerHTML = items.map(foodCard).join('');
@@ -1362,13 +2046,13 @@ window.TRIPBUDDY_DATA = {
 
   function foodCard(f) {
     const dist = distFor(f);
-    const distStr = (state.showDistance && dist != null) ? `<span class="dist">📍 ${fmtDist(dist)}</span>` : '';
+    const distStr = (state.showDistance) ? distChip(dist) : '';
     const budgetCls = 'budget-' + f.budget.toLowerCase();
-    const chill = f.chill_ok ? '<span class="badge chill">♿ Chill OK</span>' : '';
+    const chill = f.chill_ok ? `<span class="badge chill">${icon('accessible')} Chill</span>` : '';
     return `<div class="card">
       <div class="card-top">
         <div class="card-title-wrap">
-          <div class="card-name">🍴 ${esc(f.name)}</div>
+          <div class="card-name">${esc(f.name)}</div>
           <div class="card-sub">${esc(f.specialty)}</div>
         </div>
         <div class="card-tag">${esc(f.station)}</div>
@@ -1382,6 +2066,19 @@ window.TRIPBUDDY_DATA = {
         <span class="card-price">${formatPrice(f.php)}<span class="sec">${secondaryPrices(f.php)}</span></span>
         ${distStr}
       </div>
+    </div>`;
+  }
+
+  function distChip(dist) {
+    if (dist == null) return `<span class="dist dist-unknown">—</span>`;
+    return `<span class="dist">${icon('pin')}${fmtDist(dist)}</span>`;
+  }
+
+  function emptyState(iconName, title, hint) {
+    return `<div class="empty">
+      <span class="empty-ico">${icon(iconName)}</span>
+      <div class="empty-msg">${title}</div>
+      <div class="empty-hint">${hint}</div>
     </div>`;
   }
 
@@ -1401,7 +2098,7 @@ window.TRIPBUDDY_DATA = {
     const lbl = state.foodSort === 'Price' ? 'Price ↑'
               : state.foodSort === 'Nearest' ? 'Nearest'
               : 'Station';
-    $('#food-sort').textContent = lbl + ' ▾';
+    $('#food-sort .sort-label').textContent = lbl;
     renderFood();
   });
 
@@ -1426,12 +2123,12 @@ window.TRIPBUDDY_DATA = {
 
     let html = '';
     if (picks.length) {
-      html += `<div class="section-label">⭐ Your Picks</div>`;
+      html += `<div class="section-label">${icon('star')} Your Picks</div>`;
       html += picks.map(p => poiCard(p, true)).join('');
       if (others.length) html += `<div class="section-label">All Spots</div>`;
     }
     html += others.map(p => poiCard(p, false)).join('');
-    if (!filtered.length) html = '<div class="empty">No spots match this filter.</div>';
+    if (!filtered.length) html = emptyState('pin', 'No spots here', 'Tap All to see everything in the directory.');
     list.innerHTML = html;
     $$('.card', list).forEach((c, i) => {
       const item = [...picks, ...others][i];
@@ -1441,12 +2138,12 @@ window.TRIPBUDDY_DATA = {
 
   function poiCard(p, highlight) {
     const dist = distFor(p);
-    const distStr = (state.showDistance && dist != null) ? `<span class="dist">📍 ${fmtDist(dist)}</span>` : '';
+    const distStr = state.showDistance ? distChip(dist) : '';
     const feeBadge = p.fee_php === 0
       ? '<span class="badge free">Free</span>'
       : `<span class="badge fee">${formatPrice(p.fee_php)}</span>`;
-    const chill = p.chill_ok ? '<span class="badge chill">♿ Chill OK</span>' : '';
-    const star = p.your_pick ? '<span style="color:var(--gold)">⭐</span> ' : '';
+    const chill = p.chill_ok ? `<span class="badge chill">${icon('accessible')} Chill</span>` : '';
+    const star = p.your_pick ? `<span class="pick-glyph">${icon('star')}</span>` : '';
     return `<div class="card${highlight?' your-pick':''}">
       <div class="card-top">
         <div class="card-title-wrap">
@@ -1490,7 +2187,7 @@ window.TRIPBUDDY_DATA = {
     const items = D.watersports.filter(waterMatches);
     const host = $('#water-items');
     if (!items.length) {
-      host.innerHTML = '<div class="empty">No activities match this filter.</div>';
+      host.innerHTML = emptyState('waves', 'No activities', 'Try All or pick a different category.');
       return;
     }
     host.innerHTML = items.map(waterCard).join('');
@@ -1503,7 +2200,7 @@ window.TRIPBUDDY_DATA = {
     return `<div class="card">
       <div class="card-top">
         <div class="card-title-wrap">
-          <div class="card-name">🌊 ${esc(w.name)}</div>
+          <div class="card-name">${esc(w.name)}</div>
           <div class="card-sub">${esc(w.duration)} · ${esc(w.best_for)}</div>
         </div>
         <div class="card-tag">${esc(w.category)}</div>
@@ -1513,7 +2210,7 @@ window.TRIPBUDDY_DATA = {
       </div>
       <div class="card-foot">
         <span class="card-price">${formatPrice(w.php)}<span class="sec">${secondaryPrices(w.php)}</span></span>
-        <span style="color:var(--muted)">Find on beach</span>
+        <span class="card-note">Walk-up on beach</span>
       </div>
     </div>`;
   }
@@ -1525,15 +2222,14 @@ window.TRIPBUDDY_DATA = {
   // ---------------- Settings ----------------
   function renderCurrencyRows() {
     const el = $('#currency-rows');
+    el.className = 'currency-segment';
     el.innerHTML = CURRENCIES.map(c =>
-      `<div class="radio-row ${c.code===state.currency?'active':''}" data-c="${c.code}">
-        <div>
-          <div class="lbl">${c.code} <span style="color:var(--muted);font-weight:400">· ${c.sub}</span></div>
-        </div>
-        <div class="radio-dot"></div>
-      </div>`
+      `<button class="currency-cell ${c.code===state.currency?'active':''}" data-c="${c.code}" type="button">
+        <span class="sym">${SYMBOLS[c.code]} ${c.code}</span>
+        <span class="sub">${c.sub}</span>
+      </button>`
     ).join('');
-    $$('.radio-row', el).forEach(r => r.addEventListener('click', () => {
+    $$('.currency-cell', el).forEach(r => r.addEventListener('click', () => {
       state.currency = r.dataset.c;
       localStorage.setItem('tb_currency', state.currency);
       renderCurrencyRows();
@@ -1582,31 +2278,40 @@ window.TRIPBUDDY_DATA = {
       window.open(url, '_blank', 'noopener');
     } else if (copyBtn) {
       const addr = copyBtn.dataset.copy;
-      copyToClipboard(addr);
+      copyToClipboard(addr, copyBtn);
     } else if (goWater) {
       closeSheet();
       setTab('water');
     }
   });
 
-  function copyToClipboard(text) {
+  function copyToClipboard(text, btn) {
+    const ok = () => flashCopied(btn);
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(text).then(
-        () => toast('Address copied'),
-        () => fallbackCopy(text)
-      );
+      navigator.clipboard.writeText(text).then(ok, () => fallbackCopy(text, btn));
     } else {
-      fallbackCopy(text);
+      fallbackCopy(text, btn);
     }
   }
-  function fallbackCopy(text) {
+
+  function flashCopied(btn) {
+    if (!btn) { toast('Copied'); return; }
+    const prev = btn.innerHTML;
+    btn.classList.add('copied');
+    btn.innerHTML = icon('check') + '<span>Copied</span>';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = prev;
+    }, 1500);
+  }
+  function fallbackCopy(text, btn) {
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.position = 'fixed';
     ta.style.opacity = '0';
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); toast('Address copied'); } catch(e) { toast('Copy failed'); }
+    try { document.execCommand('copy'); flashCopied(btn); } catch(e) { toast('Copy failed'); }
     document.body.removeChild(ta);
   }
 
@@ -1614,20 +2319,27 @@ window.TRIPBUDDY_DATA = {
     return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
   }
 
+  function navBtn(lat, lng, label) {
+    return `<button class="nav-btn" data-nav="${navUrl(lat, lng)}">${icon('pin')}<span>${label || 'Navigate'}</span></button>`;
+  }
+  function copyBtn(text, label) {
+    return `<button class="copy-btn" data-copy="${esc(text)}">${icon('clipboard')}<span>${label || 'Copy address'}</span></button>`;
+  }
+
   function buildFoodSheet(f) {
     const dist = distFor(f);
-    const chill = f.chill_ok ? '<span class="badge chill">♿ Chill OK</span>' : '';
+    const chill = f.chill_ok ? `<span class="badge chill">${icon('accessible')} Chill OK</span>` : '';
     const budgetCls = 'budget-' + f.budget.toLowerCase();
     return `
-      <div class="sheet-cat"><span>🍴 Food · ${esc(f.station)} · ${esc(f.meal_type)}</span></div>
+      <div class="sheet-cat"><span class="sheet-cat-text">${icon('utensils')} Food · ${esc(f.station)} · ${esc(f.meal_type)}</span></div>
       <div class="sheet-name">${esc(f.name)}</div>
       <div class="sheet-badges">
         <span class="badge ${budgetCls}">${esc(f.budget)} budget</span>
         ${chill}
       </div>
       <div class="sheet-meta">
-        <div class="meta-row"><span class="ico">📍</span><span>${esc(f.address)}</span></div>
-        <div class="meta-row"><span class="ico">🍴</span><span>${esc(f.specialty)}</span></div>
+        <div class="meta-row">${icon('pin', {cls:'meta-ico'})}<span>${esc(f.address)}</span></div>
+        <div class="meta-row">${icon('utensils', {cls:'meta-ico'})}<span>${esc(f.specialty)}</span></div>
       </div>
       <div class="sheet-price-block">
         <div class="sheet-price-main">${formatPrice(f.php)}</div>
@@ -1635,8 +2347,8 @@ window.TRIPBUDDY_DATA = {
       </div>
       <div class="sheet-desc">${esc(f.vibe)}</div>
       <div class="sheet-actions">
-        <button class="nav-btn" data-nav="${navUrl(f.lat, f.lng)}">🗺 Navigate</button>
-        <button class="copy-btn" data-copy="${esc(f.address)}">📋 Copy Address</button>
+        ${navBtn(f.lat, f.lng)}
+        ${copyBtn(f.address)}
       </div>
       ${dist != null ? `<div class="sheet-dist-line">${fmtDist(dist)} away</div>` : ''}
     `;
@@ -1644,26 +2356,26 @@ window.TRIPBUDDY_DATA = {
 
   function buildPoiSheet(p) {
     const dist = distFor(p);
-    const chill = p.chill_ok ? '<span class="badge chill">♿ Chill OK</span>' : '';
+    const chill = p.chill_ok ? `<span class="badge chill">${icon('accessible')} Chill OK</span>` : '';
     const feeBadge = p.fee_php === 0
       ? '<span class="badge free">Free entry</span>'
       : `<span class="badge fee">${formatPrice(p.fee_php)} entry</span>`;
-    const pick = p.your_pick ? '<span class="pick-flag">⭐ Your Pick</span>' : '';
+    const pick = p.your_pick ? `<span class="pick-flag">${icon('star')} Your Pick</span>` : '';
     return `
-      <div class="sheet-cat"><span>📍 ${esc(p.category)}</span>${pick}</div>
+      <div class="sheet-cat"><span class="sheet-cat-text">${icon(iconFor('poi', p.category))} ${esc(p.category)}</span>${pick}</div>
       <div class="sheet-name">${esc(p.name)}</div>
       <div class="sheet-badges">
         ${feeBadge}
         ${chill}
       </div>
       <div class="sheet-meta">
-        <div class="meta-row"><span class="ico">📍</span><span>${esc(p.address)}</span></div>
-        <div class="meta-row"><span class="ico">⏰</span><span>${esc(p.best_time)}</span></div>
+        <div class="meta-row">${icon('pin', {cls:'meta-ico'})}<span>${esc(p.address)}</span></div>
+        <div class="meta-row">${icon('clock', {cls:'meta-ico'})}<span>${esc(p.best_time)}</span></div>
       </div>
       <div class="sheet-desc">${esc(p.description)}</div>
       <div class="sheet-actions">
-        <button class="nav-btn" data-nav="${navUrl(p.lat, p.lng)}">🗺 Navigate</button>
-        <button class="copy-btn" data-copy="${esc(p.address)}">📋 Copy Address</button>
+        ${navBtn(p.lat, p.lng)}
+        ${copyBtn(p.address)}
       </div>
       ${dist != null ? `<div class="sheet-dist-line">${fmtDist(dist)} away</div>` : ''}
     `;
@@ -1671,15 +2383,15 @@ window.TRIPBUDDY_DATA = {
 
   function buildWaterSheet(w) {
     return `
-      <div class="sheet-cat"><span>🌊 Watersports · ${esc(w.category)}</span></div>
+      <div class="sheet-cat"><span class="sheet-cat-text">${icon('waves')} Watersports · ${esc(w.category)}</span></div>
       <div class="sheet-name">${esc(w.name)}</div>
       <div class="sheet-badges">
         <span class="badge">${esc(w.duration)}</span>
         <span class="badge">${w.min_pax===w.max_pax ? w.min_pax+' pax' : w.min_pax+'-'+w.max_pax+' pax'}</span>
       </div>
       <div class="sheet-meta">
-        <div class="meta-row"><span class="ico">✨</span><span>Best for: ${esc(w.best_for)}</span></div>
-        <div class="meta-row"><span class="ico">📍</span><span>Walk-up: White Beach S1-S2 or Bulabog Beach operators</span></div>
+        <div class="meta-row">${icon('sparkle', {cls:'meta-ico'})}<span>Best for ${esc(w.best_for)}</span></div>
+        <div class="meta-row">${icon('pin', {cls:'meta-ico'})}<span>Walk-up: White Beach S1-S2 or Bulabog Beach operators</span></div>
       </div>
       <div class="sheet-price-block">
         <div class="sheet-price-main">${formatPrice(w.php)}</div>
@@ -1687,8 +2399,8 @@ window.TRIPBUDDY_DATA = {
       </div>
       <div class="sheet-desc">${esc(w.notes)}</div>
       <div class="sheet-actions">
-        <button class="nav-btn" data-go-water>🌊 All Watersports</button>
-        <button class="copy-btn" data-copy="${esc(w.name)} — Boracay walk-up rate ~${formatPrice(w.php)}">📋 Copy Info</button>
+        <button class="nav-btn" data-go-water>${icon('waves')}<span>All Watersports</span></button>
+        ${copyBtn(`${w.name} — Boracay walk-up rate ~${formatPrice(w.php)}`, 'Copy info')}
       </div>
     `;
   }
@@ -1702,15 +2414,15 @@ window.TRIPBUDDY_DATA = {
       </div>`
     ).join('');
     return `
-      <div class="sheet-cat"><span>🌊 Watersports Zone</span></div>
+      <div class="sheet-cat"><span class="sheet-cat-text">${icon('waves')} Watersports Zone</span></div>
       <div class="sheet-name">${esc(z.name)}</div>
       <div class="sheet-desc">${esc(z.note)}</div>
       <div class="sheet-actions">
-        <button class="nav-btn" data-nav="${navUrl(z.lat, z.lng)}">🗺 Navigate to Zone</button>
-        <button class="copy-btn" data-go-water>🌊 View All</button>
+        ${navBtn(z.lat, z.lng, 'Navigate to zone')}
+        <button class="copy-btn" data-go-water>${icon('waves')}<span>View all</span></button>
       </div>
       ${dist != null ? `<div class="sheet-dist-line">${fmtDist(dist)} away</div>` : ''}
-      <div style="margin-top:18px"><div class="setting-label">Activities here</div><div class="zone-list">${list}</div></div>
+      <div class="zone-list-wrap"><div class="setting-label">Activities here</div><div class="zone-list">${list}</div></div>
     `;
   }
 
@@ -1766,7 +2478,16 @@ window.TRIPBUDDY_DATA = {
   }
 
   // ---------------- Init ----------------
+  function hydrateIcons(root) {
+    (root || document).querySelectorAll('[data-icon]').forEach(el => {
+      if (el.dataset.iconReady) return;
+      el.innerHTML = icon(el.dataset.icon);
+      el.dataset.iconReady = '1';
+    });
+  }
+
   function init() {
+    hydrateIcons();
     initMap();
     renderFoodChips();
     renderPoiChips();
@@ -1774,8 +2495,11 @@ window.TRIPBUDDY_DATA = {
     renderCurrencyRows();
     renderDistanceToggle();
     renderAll();
-    // Initial sort label
-    $('#food-sort').textContent = 'Station ▾';
+    // Position the tab pill indicator under the active tab on first paint.
+    // Wait one frame so the tab-bar has a measurable layout.
+    requestAnimationFrame(() => positionTabIndicator(true));
+    // FAB breathes gently until GPS is acquired (subtle hint that the button does something).
+    if (!REDUCE_MOTION) $('#nearest-fab').classList.add('idle');
   }
 
   if (document.readyState === 'loading') {
