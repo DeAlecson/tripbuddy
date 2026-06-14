@@ -1251,10 +1251,15 @@ svg.icon { width: 1em; height: 1em; flex-shrink: 0; }
   100% { transform: scale(2.2);  opacity: 0; }
 }
 
-/* Map tile dark filter (fallback when Stadia isn't loaded) */
-.leaflet-tile-pane { filter: brightness(0.85) contrast(0.95); transition: filter var(--dur-base) var(--ease-out-quart); }
-.leaflet-tile-pane.tiles-dark { filter: none; }   /* Stadia already dark */
-.leaflet-control-attribution { background: rgba(10,15,28,0.7) !important; font-size: 9px !important; padding: 2px 6px !important; }
+/* Map tiles render natively; CARTO Voyager has its own color treatment. */
+.leaflet-tile-pane { transition: filter var(--dur-base) var(--ease-out-quart); }
+.leaflet-control-attribution {
+  background: rgba(10,15,28,0.78) !important;
+  color: var(--ink-3) !important;
+  font-size: 9px !important;
+  padding: 3px 7px !important;
+  border-top-left-radius: 6px !important;
+}
 .leaflet-control-attribution a { color: var(--accent) !important; }
 
 /* ---------- FAB (already-built SVG icon) ---------- */
@@ -1840,9 +1845,9 @@ window.TRIPBUDDY_DATA = {
       maxBoundsViscosity: 1.0
     }).setView([11.9640, 121.9260], 15);
 
-    // Primary tiles: CARTO Dark Matter (free, no API key, fits the navy palette).
+    // Primary tiles: CARTO Voyager (free, no API key, light cream basemap with crisp labels).
     // Falls back to OSM if CARTO is ever unavailable.
-    const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    const baseTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '© <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a> © OpenStreetMap',
       subdomains: 'abcd',
       maxZoom: 20,
@@ -1850,21 +1855,21 @@ window.TRIPBUDDY_DATA = {
       noWrap: true,
       detectRetina: true
     });
-    let darkFailed = false;
-    dark.on('tileerror', () => {
-      if (darkFailed) return;
-      darkFailed = true;
-      map.removeLayer(dark);
+    let baseFailed = false;
+    baseTiles.on('tileerror', () => {
+      if (baseFailed) return;
+      baseFailed = true;
+      map.removeLayer(baseTiles);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
         maxZoom: 19, bounds, noWrap: true
       }).addTo(map);
     });
-    dark.on('load', () => {
+    baseTiles.on('load', () => {
       const pane = document.querySelector('.leaflet-tile-pane');
-      if (pane) pane.classList.add('tiles-dark');
+      if (pane) pane.classList.add('tiles-ready');
     });
-    dark.addTo(map);
+    baseTiles.addTo(map);
 
     state.boracayBounds = bounds;
 
