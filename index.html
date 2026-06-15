@@ -1145,6 +1145,46 @@ svg.icon { width: 1em; height: 1em; flex-shrink: 0; }
   letter-spacing: 0.12em;
   color: var(--accent);
 }
+
+/* Hero photo at the top of the sheet (Foursquare-sourced when present) */
+.sheet-photo {
+  margin: -4px -18px 14px;
+  height: 200px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  overflow: hidden;
+  position: relative;
+}
+.sheet-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity var(--dur-emph) var(--ease-out-quart);
+}
+.sheet-photo img.loaded { opacity: 1; }
+.sheet-photo::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 60px;
+  background: linear-gradient(180deg, transparent, var(--surface-2));
+  pointer-events: none;
+}
+.sheet-photo .photo-credit {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.65);
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  z-index: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet-photo img { opacity: 1; transition: none; }
+}
 .sheet-cat-text { display: inline-flex; align-items: center; gap: 8px; }
 .sheet-cat-text svg { font-size: 14px; }
 .sheet-cat .pick-flag { display: inline-flex; align-items: center; gap: 4px; color: var(--gold); font-size: 10.5px; letter-spacing: 0.06em; }
@@ -2478,11 +2518,23 @@ window.TRIPBUDDY_DATA = {
     return `<button class="copy-btn google-btn" data-nav="${mapsUrl}">${icon('external')}<span>${label || 'View on Google'}</span></button>`;
   }
 
+  // Hero photo strip at the top of the sheet. Only renders if photo_url exists
+  // on the data entry (populated by the one-shot Foursquare build script).
+  function photoStrip(item) {
+    if (!item || !item.photo_url) return '';
+    return `<div class="sheet-photo">
+      <img src="${item.photo_url}" alt="${esc(item.name)}" loading="lazy" decoding="async"
+           onload="this.classList.add('loaded')" onerror="this.parentElement.style.display='none'">
+      <span class="photo-credit">via Foursquare</span>
+    </div>`;
+  }
+
   function buildFoodSheet(f) {
     const dist = distFor(f);
     const chill = f.chill_ok ? `<span class="badge chill">${icon('accessible')} Chill OK</span>` : '';
     const budgetCls = 'budget-' + f.budget.toLowerCase();
     return `
+      ${photoStrip(f)}
       <div class="sheet-cat"><span class="sheet-cat-text">${icon('utensils')} Food · ${esc(f.station)} · ${esc(f.meal_type)}</span></div>
       <div class="sheet-name">${esc(f.name)}</div>
       <div class="sheet-badges">
@@ -2514,6 +2566,7 @@ window.TRIPBUDDY_DATA = {
       : `<span class="badge fee">${formatPrice(p.fee_php)} entry</span>`;
     const pick = p.your_pick ? `<span class="pick-flag">${icon('star')} Your Pick</span>` : '';
     return `
+      ${photoStrip(p)}
       <div class="sheet-cat"><span class="sheet-cat-text">${icon(iconFor('poi', p.category))} ${esc(p.category)}</span>${pick}</div>
       <div class="sheet-name">${esc(p.name)}</div>
       <div class="sheet-badges">
