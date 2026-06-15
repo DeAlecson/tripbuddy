@@ -1781,7 +1781,8 @@ window.TRIPBUDDY_DATA = {
     info:       '<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".5" fill="currentColor"/>',
     sort:       '<path d="M7 4v16M7 4l-3 3M7 4l3 3"/><path d="M17 20V4M17 20l-3-3M17 20l3-3"/>',
     share:      '<path d="M12 3v13"/><path d="m7 8 5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>',
-    qr:         '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z M20 14h1 M14 20h1 M17 17h1v1 M20 20h1v1"/>'
+    qr:         '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z M20 14h1 M14 20h1 M17 17h1v1 M20 20h1v1"/>',
+    external:   '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M16 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h5"/>'
   };
   function icon(name, opts) {
     opts = opts || {};
@@ -2471,6 +2472,11 @@ window.TRIPBUDDY_DATA = {
   function copyBtn(text, label) {
     return `<button class="copy-btn" data-copy="${esc(text)}">${icon('clipboard')}<span>${label || 'Copy address'}</span></button>`;
   }
+  // Opens the place's Google Maps page in a new tab — there the user sees
+  // photos, reviews, hours, menu links etc. Reuses [data-nav] dispatch.
+  function googleBtn(mapsUrl, label) {
+    return `<button class="copy-btn google-btn" data-nav="${mapsUrl}">${icon('external')}<span>${label || 'View on Google'}</span></button>`;
+  }
 
   function buildFoodSheet(f) {
     const dist = distFor(f);
@@ -2494,7 +2500,7 @@ window.TRIPBUDDY_DATA = {
       <div class="sheet-desc">${esc(f.vibe)}</div>
       <div class="sheet-actions">
         ${navBtn(f.lat, f.lng)}
-        ${copyBtn(f.address)}
+        ${googleBtn(f.maps_url)}
       </div>
       ${dist != null ? `<div class="sheet-dist-line">${fmtDist(dist)} away</div>` : ''}
     `;
@@ -2521,7 +2527,7 @@ window.TRIPBUDDY_DATA = {
       <div class="sheet-desc">${esc(p.description)}</div>
       <div class="sheet-actions">
         ${navBtn(p.lat, p.lng)}
-        ${copyBtn(p.address)}
+        ${googleBtn(p.maps_url)}
       </div>
       ${dist != null ? `<div class="sheet-dist-line">${fmtDist(dist)} away</div>` : ''}
     `;
